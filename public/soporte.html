@@ -27,6 +27,8 @@
         .whatsapp-link-container a:hover {
             background-color: #1DA851;
         }
+        /* Estilo para ocultar el campo */
+        .hidden-field { display: none; }
     </style>
 </head>
 <body>
@@ -81,6 +83,10 @@
                     <option value="No se obtuvo respuesta del cliente">No se obtuvo respuesta del cliente</option>
                 </select>
             </div>
+            <div class="form-group hidden-field" id="campo_foto_test">
+                <label for="foto_test_velocidad">Foto del Test de Velocidad</label>
+                <input type="file" id="foto_test_velocidad" name="foto_test_velocidad" accept="image/*">
+            </div>
             <div class="form-group"><label for="causa_problema">Causa</label><input type="text" id="causa_problema" name="causa_problema" required></div>
             <div class="form-group"><label for="accion_realizada">Acción Realizada</label><textarea id="accion_realizada" name="accion_realizada" rows="3" placeholder="Ej: Se realizaron ambos conectores mejorando la potencia..."></textarea></div>
             <div class="form-group"><label for="conectores_utilizados">Conectores utilizados</label><input type="number" id="conectores_utilizados" name="conectores_utilizados" min="0" max="10"></div>
@@ -97,12 +103,15 @@
             </form>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
-        // Se asume que esta función (setupWhatsAppIntegration) ya está en un archivo JS común
-        // o que la copiarás una sola vez en tu HTML si es tu único archivo.
-        // Si ya la tienes en reporte.html o solicitud.html, asegúrate de que no esté duplicada.
-        function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
+        // --- CONFIGURACIÓN DE SUPABASE (AJUSTA CON TUS PROPIAS CLAVES) ---
+        const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; // Ejemplo: 'https://xyzcompany.supabase.co'
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY'; // Ejemplo: 'eyJhbGciOiJIUzI... '
+        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP (Asegúrate de que esta NO esté duplicada en otros archivos) ---
+        async function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) {
                 console.error(`Formulario con ID '${formId}' no encontrado.`);
@@ -110,13 +119,12 @@
             }
 
             const submitButton = form.querySelector('button[type="submit"]');
-            const statusMessage = form.querySelector(`#${formId}-status-message`); // Busca por ID específico
-            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`); // Busca por ID específico
-            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`); // Busca por ID específico
+            const statusMessage = form.querySelector(`#${formId}-status-message`);
+            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`);
+            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`);
 
-            // Validar que todos los elementos necesarios existan
             if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) {
-                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs como '${formId}-status-message', '${formId}-whatsapp-container', '${formId}-whatsapp-link' y el ID del botón de submit estén correctos.`);
+                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs estén correctos.`);
                 return;
             }
 
@@ -125,30 +133,55 @@
                 
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
-                statusMessage.className = 'status-message'; // Reinicia la clase
-                statusMessage.textContent = ''; // Limpia el mensaje
-                whatsappLinkContainer.style.display = 'none'; // Oculta el enlace de WhatsApp
+                statusMessage.className = 'status-message';
+                statusMessage.textContent = '';
+                whatsappLinkContainer.style.display = 'none';
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
+                
+                let imageUrl = ''; // Variable para almacenar la URL de la imagen
 
-                // --- Lógica de pre-procesamiento de datos específica del formulario (si aplica) ---
-                // Si la lógica de cédula/asesor/fuente SOLO aplica a 'solicitudForm', quítala de aquí.
-                // Si hay lógica común a varios formularios, déjala aquí.
-                if (dataObject.cedula_nacionalidad && dataObject.cedula_numero) {
-                    dataObject.cedula = `${dataObject.cedula_nacionalidad}-${dataObject.cedula_numero}`;
-                    delete dataObject.cedula_nacionalidad;
-                    delete dataObject.cedula_numero;
+                // Lógica específica para subir la foto si existe y el estatus es 'Realizado'
+                const fotoInput = form.querySelector('#foto_test_velocidad');
+                if (fotoInput && fotoInput.files.length > 0 && dataObject.estatus_visita === 'Realizado') {
+                    const file = fotoInput.files[0];
+                    const fileName = `${Date.now()}-${file.name}`; // Nombre único para el archivo
+                    const bucketName = 'test-speed-photos'; // Nombre de tu bucket en Supabase Storage
+                    
+                    statusMessage.textContent = 'Subiendo imagen...'; // Actualiza el mensaje de estado
+                    statusMessage.className = 'status-message'; // Quita el color verde/rojo mientras sube la imagen
+
+                    try {
+                        const { data, error } = await supabase.storage
+                            .from(bucketName)
+                            .upload(fileName, file, {
+                                cacheControl: '3600',
+                                upsert: false
+                            });
+
+                        if (error) {
+                            throw new Error(`Error al subir la imagen: ${error.message}`);
+                        }
+                        
+                        // Obtener la URL pública de la imagen
+                        const { data: publicUrlData } = supabase.storage
+                            .from(bucketName)
+                            .getPublicUrl(fileName);
+
+                        imageUrl = publicUrlData.publicUrl;
+                        dataObject.foto_test_velocidad_url = imageUrl; // Añade la URL al objeto de datos
+                        statusMessage.textContent = 'Imagen subida. Guardando reporte...'; // Mensaje de progreso
+
+                    } catch (uploadError) {
+                        statusMessage.className = 'status-message error';
+                        statusMessage.textContent = `Error: ${uploadError.message}`;
+                        submitButton.disabled = false;
+                        submitButton.textContent = options.originalSubmitText || 'Guardar';
+                        submitButton.style.display = 'block';
+                        return; // Detener el proceso si la subida falla
+                    }
                 }
-                if (dataObject.asesor === 'Otro' && dataObject.otro_asesor) {
-                    dataObject.asesor = dataObject.otro_asesor;
-                    delete dataObject.otro_asesor;
-                }
-                if (dataObject.fuente_conocimiento === 'Otro' && dataObject.otra_fuente) {
-                    dataObject.fuente_conocimiento = dataObject.otra_fuente;
-                    delete dataObject.otra_fuente;
-                }
-                // --- FIN Lógica de pre-procesamiento (ajusta según tus necesidades) ---
 
                 try {
                     const response = await fetch(apiEndpoint, {
@@ -165,20 +198,16 @@
                     statusMessage.className = 'status-message success';
                     statusMessage.textContent = '¡Información guardada con éxito!';
                     
-                    // Ocultar el botón de guardar
-                    submitButton.style.display = 'none';
+                    submitButton.style.display = 'none'; // Ocultar el botón de guardar
 
-                    // Construir el mensaje de WhatsApp usando la función proporcionada
-                    const whatsappMessage = messageBuilder(dataObject);
+                    const whatsappMessage = messageBuilder(dataObject, imageUrl); // Pasa la URL de la imagen a messageBuilder
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
                     
                     whatsappLink.href = whatsappUrl;
                     whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
 
-                    // Opcional: Reiniciar el formulario si se define en las opciones
                     if (options.resetFormOnSuccess) {
                         form.reset(); 
-                        // Lógica para reestablecer campos específicos como fechas/horas
                         if (options.postResetCallback) {
                             options.postResetCallback();
                         }
@@ -188,11 +217,10 @@
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
                 } finally {
-                    // Si hubo un error, re-habilitar y mostrar el botón de guardar
                     if (statusMessage.className.includes('error')) {
                          submitButton.disabled = false;
-                         submitButton.textContent = options.originalSubmitText || 'Guardar'; // Texto original
-                         submitButton.style.display = 'block'; // Asegurarse de que esté visible
+                         submitButton.textContent = options.originalSubmitText || 'Guardar';
+                         submitButton.style.display = 'block';
                     }
                 }
             });
@@ -201,9 +229,10 @@
         // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
 
         // Función para construir el mensaje de WhatsApp para el formulario de Soporte
-        const buildSoporteMessage = (data) => {
-            // Corrección de la URL de coordenadas en el mensaje de WhatsApp
-            const coordsLink = data.coordenadas ? `*Coordenadas:* https://maps.google.com/?q=${encodeURIComponent(data.coordenadas)}\n` : '';
+        // Ahora acepta un segundo parámetro 'imageUrl'
+        const buildSoporteMessage = (data, imageUrl = '') => {
+            const coordsLink = data.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordenadas)}\n` : '';
+            const fotoLink = imageUrl ? `*Foto Test Velocidad:* ${imageUrl}\n` : ''; // Añade la URL de la imagen si existe
 
             return `*Reporte Técnico de Soporte:*\n\n` +
                 `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
@@ -211,12 +240,13 @@
                 `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
                 `*Precinto:* ${data.precinto || 'N/A'}\n` +
                 `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
-                coordsLink + // Usa la variable con el enlace corregido
+                coordsLink +
                 `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
                 `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
                 `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
                 `*Zona:* ${data.zona || 'N/A'}\n` +
                 `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
+                fotoLink + // Aquí se incluye el enlace a la foto
                 `*Causa:* ${data.causa_problema || 'N/A'}\n` +
                 `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
                 `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
@@ -245,19 +275,19 @@
 
                 // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
                 setupWhatsAppIntegration(
-                    'soporteForm', // ID del formulario
-                    '/api/reportes/soporte', // Endpoint de la API para este formulario
-                    buildSoporteMessage, // Función para construir el mensaje de WhatsApp
+                    'soporteForm',
+                    '/api/reportes/soporte',
+                    buildSoporteMessage,
                     {
-                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
-                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                        resetFormOnSuccess: true,
+                        postResetCallback: () => {
                             const ahora = new Date();
                             const offset = ahora.getTimezoneOffset();
                             const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
                             document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
                             document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
                         },
-                        originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
+                        originalSubmitText: 'Guardar Reporte'
                     }
                 );
 
@@ -314,6 +344,30 @@
                 puertoClienteSelect.disabled = true;
             }
         });
+
+        // --- Lógica para mostrar/ocultar campo de foto ---
+        const estatusVisitaSelect = document.getElementById('estatus_visita');
+        const campoFotoTest = document.getElementById('campo_foto_test'); // El div que contiene el input de la foto
+        const fotoTestInput = document.getElementById('foto_test_velocidad'); // El input file
+
+        estatusVisitaSelect.addEventListener('change', function() {
+            if (this.value === 'Realizado') {
+                campoFotoTest.style.display = 'block';
+                fotoTestInput.required = true; // Hacerlo requerido si es "Realizado"
+            } else {
+                campoFotoTest.style.display = 'none';
+                fotoTestInput.required = false; // Quitar el requerido
+                fotoTestInput.value = ''; // Limpiar el campo de archivo
+            }
+        });
+        // Inicializar el estado al cargar la página (por si la opción "Realizado" es la predeterminada)
+        if (estatusVisitaSelect.value === 'Realizado') {
+            campoFotoTest.style.display = 'block';
+            fotoTestInput.required = true;
+        } else {
+            campoFotoTest.style.display = 'none';
+            fotoTestInput.required = false;
+        }
 
     </script>
 </body>
