@@ -109,10 +109,12 @@
         // --- CONFIGURACIÓN DE SUPABASE (AJUSTA CON TUS PROPIAS CLAVES) ---
         const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; // Ejemplo: 'https://xyzcompany.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY'; // Ejemplo: 'eyJhbGciOiJIUzI... '
-        // Ahora sí, Supabase está definido
+        
+        // Ahora sí, Supabase está definido y podemos crear la instancia
         const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
+        // (Esta función debe estar definida UNA SOLA VEZ en tu proyecto, preferiblemente en un archivo JS separado)
         async function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) {
