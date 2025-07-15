@@ -6,12 +6,10 @@
     <title>Reporte de Soporte</title>
     <link rel="stylesheet" href="minimal-style.css">
     <style>
-        /* Estilos generales para alineación y espaciado */
         .geo-wrapper { display: flex; align-items: center; gap: 0.5rem; }
         .geo-wrapper input { flex-grow: 1; }
         .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
-
-        /* Estilos para el enlace de WhatsApp */
+        /* Estilos para el enlace de WhatsApp, si no están en minimal-style.css */
         .whatsapp-link-container {
             margin-top: 1rem;
             text-align: center;
@@ -28,28 +26,6 @@
         }
         .whatsapp-link-container a:hover {
             background-color: #1DA851;
-        }
-
-        /* Estilo para ocultar el campo de la foto inicialmente */
-        .hidden-field { display: none; }
-
-        /* Estilos para mensajes de estado (success/error) */
-        .status-message {
-            margin-top: 1rem;
-            padding: 0.8rem;
-            border-radius: 5px;
-            font-weight: bold;
-            text-align: center;
-        }
-        .status-message.success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .status-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
         }
     </style>
 </head>
@@ -105,10 +81,6 @@
                     <option value="No se obtuvo respuesta del cliente">No se obtuvo respuesta del cliente</option>
                 </select>
             </div>
-            <div class="form-group hidden-field" id="campo_foto_test">
-                <label for="foto_test_velocidad">Foto del Test de Velocidad</label>
-                <input type="file" id="foto_test_velocidad" name="foto_test_velocidad" accept="image/*">
-            </div>
             <div class="form-group"><label for="causa_problema">Causa</label><input type="text" id="causa_problema" name="causa_problema" required></div>
             <div class="form-group"><label for="accion_realizada">Acción Realizada</label><textarea id="accion_realizada" name="accion_realizada" rows="3" placeholder="Ej: Se realizaron ambos conectores mejorando la potencia..."></textarea></div>
             <div class="form-group"><label for="conectores_utilizados">Conectores utilizados</label><input type="number" id="conectores_utilizados" name="conectores_utilizados" min="0" max="10"></div>
@@ -125,13 +97,12 @@
             </form>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <script>
         // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
-        // (Esta función debe estar definida UNA SOLA VEZ en tu proyecto, preferiblemente en un archivo JS separado
-        // que se cargue después del SDK de Supabase)
-        async function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
+        // Se asume que esta función (setupWhatsAppIntegration) ya está en un archivo JS común
+        // o que la copiarás una sola vez en tu HTML si es tu único archivo.
+        // Si ya la tienes en reporte.html o solicitud.html, asegúrate de que no esté duplicada.
+        function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) {
                 console.error(`Formulario con ID '${formId}' no encontrado.`);
@@ -139,12 +110,13 @@
             }
 
             const submitButton = form.querySelector('button[type="submit"]');
-            const statusMessage = form.querySelector(`#${formId}-status-message`);
-            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`);
-            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`);
+            const statusMessage = form.querySelector(`#${formId}-status-message`); // Busca por ID específico
+            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`); // Busca por ID específico
+            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`); // Busca por ID específico
 
+            // Validar que todos los elementos necesarios existan
             if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) {
-                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs estén correctos.`);
+                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs como '${formId}-status-message', '${formId}-whatsapp-container', '${formId}-whatsapp-link' y el ID del botón de submit estén correctos.`);
                 return;
             }
 
@@ -153,56 +125,30 @@
                 
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
-                statusMessage.className = 'status-message';
-                statusMessage.textContent = '';
-                whatsappLinkContainer.style.display = 'none';
+                statusMessage.className = 'status-message'; // Reinicia la clase
+                statusMessage.textContent = ''; // Limpia el mensaje
+                whatsappLinkContainer.style.display = 'none'; // Oculta el enlace de WhatsApp
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
-                
-                let imageUrl = ''; // Variable para almacenar la URL de la imagen
 
-                // Lógica específica para subir la foto si existe y el estatus es 'Realizado'
-                const fotoInput = form.querySelector('#foto_test_velocidad');
-                if (fotoInput && fotoInput.files.length > 0 && dataObject.estatus_visita === 'Realizado') {
-                    const file = fotoInput.files[0];
-                    const fileName = `${Date.now()}-${file.name}`; // Nombre único para el archivo
-                    const bucketName = 'test-speed-photos'; // Nombre de tu bucket en Supabase Storage
-                    
-                    statusMessage.textContent = 'Subiendo imagen...'; // Actualiza el mensaje de estado
-                    statusMessage.className = 'status-message'; // Quita el color verde/rojo mientras sube la imagen
-
-                    try {
-                        // 'supabase' DEBE ESTAR DISPONIBLE AQUÍ
-                        const { data, error } = await supabase.storage
-                            .from(bucketName)
-                            .upload(fileName, file, {
-                                cacheControl: '3600',
-                                upsert: false
-                            });
-
-                        if (error) {
-                            throw new Error(`Error al subir la imagen: ${error.message}`);
-                        }
-                        
-                        // Obtener la URL pública de la imagen
-                        const { data: publicUrlData } = supabase.storage
-                            .from(bucketName)
-                            .getPublicUrl(fileName);
-
-                        imageUrl = publicUrlData.publicUrl;
-                        dataObject.foto_test_velocidad_url = imageUrl; // Añade la URL al objeto de datos
-                        statusMessage.textContent = 'Imagen subida. Guardando reporte...'; // Mensaje de progreso
-
-                    } catch (uploadError) {
-                        statusMessage.className = 'status-message error';
-                        statusMessage.textContent = `Error: ${uploadError.message}`;
-                        submitButton.disabled = false;
-                        submitButton.textContent = options.originalSubmitText || 'Guardar';
-                        submitButton.style.display = 'block';
-                        return; // Detener el proceso si la subida falla
-                    }
+                // --- Lógica de pre-procesamiento de datos específica del formulario (si aplica) ---
+                // Si la lógica de cédula/asesor/fuente SOLO aplica a 'solicitudForm', quítala de aquí.
+                // Si hay lógica común a varios formularios, déjala aquí.
+                if (dataObject.cedula_nacionalidad && dataObject.cedula_numero) {
+                    dataObject.cedula = `${dataObject.cedula_nacionalidad}-${dataObject.cedula_numero}`;
+                    delete dataObject.cedula_nacionalidad;
+                    delete dataObject.cedula_numero;
                 }
+                if (dataObject.asesor === 'Otro' && dataObject.otro_asesor) {
+                    dataObject.asesor = dataObject.otro_asesor;
+                    delete dataObject.otro_asesor;
+                }
+                if (dataObject.fuente_conocimiento === 'Otro' && dataObject.otra_fuente) {
+                    dataObject.fuente_conocimiento = dataObject.otra_fuente;
+                    delete dataObject.otra_fuente;
+                }
+                // --- FIN Lógica de pre-procesamiento (ajusta según tus necesidades) ---
 
                 try {
                     const response = await fetch(apiEndpoint, {
@@ -219,16 +165,20 @@
                     statusMessage.className = 'status-message success';
                     statusMessage.textContent = '¡Información guardada con éxito!';
                     
-                    submitButton.style.display = 'none'; // Ocultar el botón de guardar
+                    // Ocultar el botón de guardar
+                    submitButton.style.display = 'none';
 
-                    const whatsappMessage = messageBuilder(dataObject, imageUrl); // Pasa la URL de la imagen a messageBuilder
+                    // Construir el mensaje de WhatsApp usando la función proporcionada
+                    const whatsappMessage = messageBuilder(dataObject);
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
                     
                     whatsappLink.href = whatsappUrl;
                     whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
 
+                    // Opcional: Reiniciar el formulario si se define en las opciones
                     if (options.resetFormOnSuccess) {
                         form.reset(); 
+                        // Lógica para reestablecer campos específicos como fechas/horas
                         if (options.postResetCallback) {
                             options.postResetCallback();
                         }
@@ -238,168 +188,133 @@
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
                 } finally {
+                    // Si hubo un error, re-habilitar y mostrar el botón de guardar
                     if (statusMessage.className.includes('error')) {
                          submitButton.disabled = false;
-                         submitButton.textContent = options.originalSubmitText || 'Guardar';
-                         submitButton.style.display = 'block';
+                         submitButton.textContent = options.originalSubmitText || 'Guardar'; // Texto original
+                         submitButton.style.display = 'block'; // Asegurarse de que esté visible
                     }
                 }
             });
         }
 
-        // --- CÓDIGO QUE SE EJECUTA CUANDO EL DOM ESTÁ CARGADO ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- CONFIGURACIÓN DE SUPABASE (AHORA SÍ, DENTRO DE DOMContentLoaded) ---
-            // Asegúrate de que estas son tus credenciales REALES
-            const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; 
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY';
-            
-            // Supabase ya está definido gracias al script CDN anterior
-            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            // --------------------------------------------------------
+        // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
 
-            // Función para construir el mensaje de WhatsApp para el formulario de Soporte
-            // Ahora acepta un segundo parámetro 'imageUrl'
-            const buildSoporteMessage = (data, imageUrl = '') => {
-                const coordsLink = data.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordenadas)}\n` : '';
-                const fotoLink = imageUrl ? `*Foto Test Velocidad:* ${imageUrl}\n` : ''; // Añade la URL de la imagen si existe
+        // Función para construir el mensaje de WhatsApp para el formulario de Soporte
+        const buildSoporteMessage = (data) => {
+            // Corrección de la URL de coordenadas en el mensaje de WhatsApp
+            const coordsLink = data.coordenadas ? `*Coordenadas:* https://maps.google.com/?q=${encodeURIComponent(data.coordenadas)}\n` : '';
 
-                return `*Reporte Técnico de Soporte:*\n\n` +
-                    `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
-                    `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
-                    `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
-                    `*Precinto:* ${data.precinto || 'N/A'}\n` +
-                    `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
-                    coordsLink +
-                    `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
-                    `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
-                    `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
-                    `*Zona:* ${data.zona || 'N/A'}\n` +
-                    `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
-                    fotoLink + // Aquí se incluye el enlace a la foto
-                    `*Causa:* ${data.causa_problema || 'N/A'}\n` +
-                    `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
-                    `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
-                    `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
-                    `*Observaciones Adicionales:* ${data.observaciones || 'N/A'}\n` +
-                    `*Realizado por:* ${data.realizado_por_tecnico || 'N/A'}`;
-            };
+            return `*Reporte Técnico de Soporte:*\n\n` +
+                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
+                `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
+                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
+                `*Precinto:* ${data.precinto || 'N/A'}\n` +
+                `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
+                coordsLink + // Usa la variable con el enlace corregido
+                `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
+                `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
+                `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
+                `*Zona:* ${data.zona || 'N/A'}\n` +
+                `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
+                `*Causa:* ${data.causa_problema || 'N/A'}\n` +
+                `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
+                `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
+                `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
+                `*Observaciones Adicionales:* ${data.observaciones || 'N/A'}\n` +
+                `*Realizado por:* ${data.realizado_por_tecnico || 'N/A'}`;
+        };
 
-            // Lógica de acceso por contraseña
-            const passwordForm = document.getElementById('password-form');
-            passwordForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                if (e.target.querySelector('input').value === '1111') {
-                    document.getElementById('password-container').style.display = 'none';
-                    document.getElementById('form-container').style.display = 'block';
+        // Lógica de acceso por contraseña
+        const passwordForm = document.getElementById('password-form');
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (e.target.querySelector('input').value === '1111') {
+                document.getElementById('password-container').style.display = 'none';
+                document.getElementById('form-container').style.display = 'block';
 
-                    // Inicializar fecha y hora aquí una vez que se accede al formulario
-                    const fechaInput = document.getElementById('fecha_reporte');
-                    const horaInput = document.getElementById('hora_reporte');
-                    const ahora = new Date();
-                    const offset = ahora.getTimezoneOffset();
-                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                    
-                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
-                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                // Inicializar fecha y hora aquí una vez que se accede al formulario
+                const fechaInput = document.getElementById('fecha_reporte');
+                const horaInput = document.getElementById('hora_reporte');
+                const ahora = new Date();
+                const offset = ahora.getTimezoneOffset();
+                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                
+                fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
 
-                    // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
-                    setupWhatsAppIntegration(
-                        'soporteForm', // ID del formulario
-                        '/api/reportes/soporte', // Endpoint de la API para este formulario
-                        buildSoporteMessage, // Función para construir el mensaje de WhatsApp
-                        {
-                            resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
-                            postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
-                                const ahora = new Date();
-                                const offset = ahora.getTimezoneOffset();
-                                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                                document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
-                                document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                            },
-                            originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
-                        }
-                    );
-
-                } else {
-                    alert('Clave incorrecta.');
-                }
-            });
-            
-            // Lógica específica para el campo precinto
-            document.getElementById('precinto').addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/\D/g, '');
-            });
-
-            // Lógica para obtener coordenadas
-            document.getElementById('geo-btn').addEventListener('click', () => {
-                const geoBtn = document.getElementById('geo-btn');
-                const coordsInput = document.getElementById('coordenadas');
-                if (!navigator.geolocation) {
-                    coordsInput.value = 'Geolocalización no soportada.';
-                    return;
-                }
-                geoBtn.textContent = '...';
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
-                        geoBtn.textContent = '📍';
-                    },
-                    () => {
-                        coordsInput.value = 'No se pudo obtener la ubicación.';
-                        geoBtn.textContent = '📍';
+                // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
+                setupWhatsAppIntegration(
+                    'soporteForm', // ID del formulario
+                    '/api/reportes/soporte', // Endpoint de la API para este formulario
+                    buildSoporteMessage, // Función para construir el mensaje de WhatsApp
+                    {
+                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
+                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                            const ahora = new Date();
+                            const offset = ahora.getTimezoneOffset();
+                            const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                            document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                            document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                        },
+                        originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
                     }
                 );
-            });
 
-            // Lógica para puertos de cliente dinámicos
-            const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
-            const puertoClienteSelect = document.getElementById('puerto_cliente');
-
-            cantidadPuertosSelect.addEventListener('change', function() {
-                const cantidad = parseInt(this.value, 10);
-                puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
-                puertoClienteSelect.disabled = false;
-
-                if (cantidad) {
-                    puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
-                    for (let i = 1; i <= cantidad; i++) {
-                        const option = document.createElement('option');
-                        option.value = i;
-                        option.textContent = `Puerto ${i}`;
-                        puertoClienteSelect.appendChild(option);
-                    }
-                } else {
-                    puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
-                    puertoClienteSelect.disabled = true;
-                }
-            });
-
-            // --- Lógica para mostrar/ocultar campo de foto ---
-            const estatusVisitaSelect = document.getElementById('estatus_visita');
-            const campoFotoTest = document.getElementById('campo_foto_test'); // El div que contiene el input de la foto
-            const fotoTestInput = document.getElementById('foto_test_velocidad'); // El input file
-
-            estatusVisitaSelect.addEventListener('change', function() {
-                if (this.value === 'Realizado') {
-                    campoFotoTest.style.display = 'block';
-                    fotoTestInput.required = true; // Hacerlo requerido si es "Realizado"
-                } else {
-                    campoFotoTest.style.display = 'none';
-                    fotoTestInput.required = false; // Quitar el requerido
-                    fotoTestInput.value = ''; // Limpiar el campo de archivo
-                }
-            });
-            // Inicializar el estado al cargar la página (por si la opción "Realizado" es la predeterminada)
-            if (estatusVisitaSelect.value === 'Realizado') {
-                campoFotoTest.style.display = 'block';
-                fotoTestInput.required = true;
             } else {
-                campoFotoTest.style.display = 'none';
-                fotoTestInput.required = false;
+                alert('Clave incorrecta.');
             }
+        });
+        
+        // Lógica específica para el campo precinto
+        document.getElementById('precinto').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
 
-        }); // Cierre de DOMContentLoaded
+        // Lógica para obtener coordenadas
+        document.getElementById('geo-btn').addEventListener('click', () => {
+            const geoBtn = document.getElementById('geo-btn');
+            const coordsInput = document.getElementById('coordenadas');
+            if (!navigator.geolocation) {
+                coordsInput.value = 'Geolocalización no soportada.';
+                return;
+            }
+            geoBtn.textContent = '...';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                    geoBtn.textContent = '📍';
+                },
+                () => {
+                    coordsInput.value = 'No se pudo obtener la ubicación.';
+                    geoBtn.textContent = '📍';
+                }
+            );
+        });
+
+        // Lógica para puertos de cliente dinámicos
+        const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
+        const puertoClienteSelect = document.getElementById('puerto_cliente');
+
+        cantidadPuertosSelect.addEventListener('change', function() {
+            const cantidad = parseInt(this.value, 10);
+            puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
+            puertoClienteSelect.disabled = false;
+
+            if (cantidad) {
+                puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
+                for (let i = 1; i <= cantidad; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `Puerto ${i}`;
+                    puertoClienteSelect.appendChild(option);
+                }
+            } else {
+                puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
+                puertoClienteSelect.disabled = true;
+            }
+        });
+
     </script>
 </body>
 </html>
