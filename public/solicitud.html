@@ -11,6 +11,24 @@
         .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
         .cedula-wrapper select { width: auto; }
         .otro-campo { display: none; margin-top: 0.5rem; }
+        /* Estilos para el enlace de WhatsApp */
+        .whatsapp-link-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .whatsapp-link-container a {
+            display: inline-block;
+            background-color: #25D366; /* Color de WhatsApp */
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .whatsapp-link-container a:hover {
+            background-color: #1DA851;
+        }
     </style>
 </head>
 <body>
@@ -82,7 +100,11 @@
             </div>
 
             <div id="status-message" class="status-message"></div>
-            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
+            <div id="whatsapp-action-container" class="whatsapp-link-container" style="display: none;">
+                <p>La solicitud ha sido guardada. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p>
+                <a id="whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a>
+            </div>
+            <button type="submit" class="btn-primary">Guardar Solicitud</button>
         </form>
     </div>
 
@@ -143,12 +165,16 @@
             });
 
             const form = document.getElementById('solicitudForm');
+            const whatsappLinkContainer = document.getElementById('whatsapp-action-container');
+            const whatsappLink = document.getElementById('whatsapp-link');
+
             form.addEventListener('submit', e => {
                 e.preventDefault();
                 const submitButton = form.querySelector('button[type="submit"]');
                 const statusMessage = document.getElementById('status-message');
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
+                whatsappLinkContainer.style.display = 'none'; // Ocultar el enlace de WhatsApp al intentar guardar
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
@@ -162,6 +188,14 @@
                 delete dataObject.otro_asesor;
                 delete dataObject.otra_fuente;
 
+                // FIX: Corrige la URL de coordenadas si quieres un enlace a Google Maps
+                // La línea original era: `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n`
+                // Opción 1: Solo mostrar las coordenadas como texto
+                // const coordsText = dataObject.coordenadas ? `*Coordenadas:* ${dataObject.coordenadas}\n` : '';
+                // Opción 2: Generar un enlace de Google Maps con las coordenadas
+                const coordsLink = dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dataObject.coordenadas)}\n` : '';
+
+
                 fetch('/api/solicitudes', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -173,7 +207,7 @@
                     })
                     .then(data => {
                         statusMessage.className = 'status-message success';
-                        statusMessage.textContent = '¡Solicitud guardada! Abriendo WhatsApp...';
+                        statusMessage.textContent = '¡Solicitud guardada con éxito!';
                         
                         const fechaSolicitud = new Date(dataObject.fecha_solicitud + 'T00:00:00').toLocaleDateString('es-ES');
                         const fechaDisponibilidad = new Date(dataObject.fecha_disponibilidad + 'T00:00:00').toLocaleDateString('es-ES');
@@ -186,17 +220,25 @@
                             (dataObject.contacto_2 ? `*Contacto 2:* ${dataObject.contacto_2}\n` : '') +
                             `*Ubicación:* ${dataObject.ubicacion}, ${dataObject.municipio}, ${dataObject.sector}\n` +
                             `*Dirección:* ${dataObject.calle}, ${dataObject.casa}\n` +
-                            (dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n` : '') +
+                            coordsLink + // Usa la variable con el enlace corregido
                             `*Correo:* ${dataObject.email}\n` +
                             `*Tipo de Servicio:* ${dataObject.tipo_servicio}\n` +
                             `*Disponibilidad para instalación:* ${fechaDisponibilidad}\n` +
                             `*Asesor:* ${dataObject.asesor}\n` +
                             `*Cómo nos conoció:* ${dataObject.fuente_conocimiento}`;
 
-                        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                        // Genera la URL de WhatsApp
+                        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
                         
-                        form.reset();
-                        document.getElementById('fecha_solicitud').value = hoyLocal.toISOString().split('T')[0];
+                        // Asigna la URL al enlace y lo muestra
+                        whatsappLink.href = whatsappUrl;
+                        whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace
+                        
+                        // Opcional: Reiniciar el formulario después de que el usuario haga clic en el enlace de WhatsApp
+                        // Por ahora, lo mantenemos visible para que el usuario pueda hacer clic
+                        // form.reset();
+                        // document.getElementById('fecha_solicitud').value = hoyLocal.toISOString().split('T')[0];
+
                     })
                     .catch(error => {
                         statusMessage.className = 'status-message error';
@@ -204,7 +246,7 @@
                     })
                     .finally(() => {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Guardar y Enviar a WhatsApp';
+                        submitButton.textContent = 'Guardar Solicitud';
                     });
             });
         });
