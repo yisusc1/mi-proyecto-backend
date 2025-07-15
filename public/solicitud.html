@@ -64,7 +64,17 @@
             </div>
 
             <div class="form-group"><label for="municipio">Municipio</label>
-                <select id="municipio" name="municipio" required><option value="" disabled selected>Seleccione</option><option value="Guaicaipuro">Guaicaipuro</option><option value="Los Salias">Los Salias</option><option value="Cecilio Acosta">Cecilio Acosta</option><option value="Libertador">Libertador</option><option value="Carrizal">Carrizal</option><option value="Revenga">Revenga</option><option value="Santos Michelena">Santos Michelena</option><option value="Sucre">Sucre</option><option value="Otro">Otro</option></select>
+                <select id="municipio" name="municipio" required>
+                    <option value="" disabled selected>Seleccione</option>
+                    <option value="Guaicaipuro">Guaicaipuro</option>
+                    <option value="Los Salias">Los Salias</option>
+                    <option value="Cecilio Acosta">Cecilio Acosta</option>
+                    <option value="Libertador">Libertador</option> <option value="Carrizal">Carrizal</option>
+                    <option value="Revenga">Revenga</option>
+                    <option value="Santos Michelena">Santos Michelena</option>
+                    <option value="Sucre">Sucre</option>
+                    <option value="Otro">Otro</option>
+                </select>
             </div>
 
             <div class="form-group"><label for="sector">Sector</label><input type="text" id="sector" name="sector" required></div>
@@ -104,7 +114,7 @@
                 <p>La solicitud ha sido guardada. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p>
                 <a id="whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a>
             </div>
-            <button type="submit" class="btn-primary">Guardar Solicitud</button>
+            <button type="submit" class="btn-primary" id="guardar-btn">Guardar Solicitud</button>
         </form>
     </div>
 
@@ -165,6 +175,7 @@
             });
 
             const form = document.getElementById('solicitudForm');
+            const guardarBtn = document.getElementById('guardar-btn'); // ID para el botón de guardar
             const whatsappLinkContainer = document.getElementById('whatsapp-action-container');
             const whatsappLink = document.getElementById('whatsapp-link');
 
@@ -188,11 +199,6 @@
                 delete dataObject.otro_asesor;
                 delete dataObject.otra_fuente;
 
-                // FIX: Corrige la URL de coordenadas si quieres un enlace a Google Maps
-                // La línea original era: `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n`
-                // Opción 1: Solo mostrar las coordenadas como texto
-                // const coordsText = dataObject.coordenadas ? `*Coordenadas:* ${dataObject.coordenadas}\n` : '';
-                // Opción 2: Generar un enlace de Google Maps con las coordenadas
                 const coordsLink = dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(dataObject.coordenadas)}\n` : '';
 
 
@@ -209,6 +215,9 @@
                         statusMessage.className = 'status-message success';
                         statusMessage.textContent = '¡Solicitud guardada con éxito!';
                         
+                        // Ocultar el botón de guardar
+                        guardarBtn.style.display = 'none';
+
                         const fechaSolicitud = new Date(dataObject.fecha_solicitud + 'T00:00:00').toLocaleDateString('es-ES');
                         const fechaDisponibilidad = new Date(dataObject.fecha_disponibilidad + 'T00:00:00').toLocaleDateString('es-ES');
                         
@@ -220,22 +229,19 @@
                             (dataObject.contacto_2 ? `*Contacto 2:* ${dataObject.contacto_2}\n` : '') +
                             `*Ubicación:* ${dataObject.ubicacion}, ${dataObject.municipio}, ${dataObject.sector}\n` +
                             `*Dirección:* ${dataObject.calle}, ${dataObject.casa}\n` +
-                            coordsLink + // Usa la variable con el enlace corregido
+                            coordsLink +
                             `*Correo:* ${dataObject.email}\n` +
                             `*Tipo de Servicio:* ${dataObject.tipo_servicio}\n` +
                             `*Disponibilidad para instalación:* ${fechaDisponibilidad}\n` +
                             `*Asesor:* ${dataObject.asesor}\n` +
                             `*Cómo nos conoció:* ${dataObject.fuente_conocimiento}`;
 
-                        // Genera la URL de WhatsApp
                         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
                         
-                        // Asigna la URL al enlace y lo muestra
                         whatsappLink.href = whatsappUrl;
-                        whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace
+                        whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
                         
-                        // Opcional: Reiniciar el formulario después de que el usuario haga clic en el enlace de WhatsApp
-                        // Por ahora, lo mantenemos visible para que el usuario pueda hacer clic
+                        // Opcional: reiniciar el formulario aquí si lo deseas, o después de que el usuario haga clic en el enlace de WhatsApp
                         // form.reset();
                         // document.getElementById('fecha_solicitud').value = hoyLocal.toISOString().split('T')[0];
 
@@ -245,8 +251,13 @@
                         statusMessage.textContent = `Error: ${error.message}`;
                     })
                     .finally(() => {
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Guardar Solicitud';
+                        // El botón de guardar se mantiene oculto si fue exitoso,
+                        // o se habilita de nuevo si hubo un error.
+                        if (statusMessage.className.includes('error')) {
+                             submitButton.disabled = false;
+                             submitButton.textContent = 'Guardar Solicitud';
+                        }
+                       
                     });
             });
         });
