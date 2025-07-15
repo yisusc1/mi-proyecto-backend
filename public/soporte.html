@@ -104,13 +104,15 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
         // --- CONFIGURACIÓN DE SUPABASE (AJUSTA CON TUS PROPIAS CLAVES) ---
         const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; // Ejemplo: 'https://xyzcompany.supabase.co'
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY'; // Ejemplo: 'eyJhbGciOiJIUzI... '
+        // Ahora sí, Supabase está definido
         const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP (Asegúrate de que esta NO esté duplicada en otros archivos) ---
+        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
         async function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) {
@@ -275,19 +277,19 @@
 
                 // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
                 setupWhatsAppIntegration(
-                    'soporteForm',
-                    '/api/reportes/soporte',
-                    buildSoporteMessage,
+                    'soporteForm', // ID del formulario
+                    '/api/reportes/soporte', // Endpoint de la API para este formulario
+                    buildSoporteMessage, // Función para construir el mensaje de WhatsApp
                     {
-                        resetFormOnSuccess: true,
-                        postResetCallback: () => {
+                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
+                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
                             const ahora = new Date();
                             const offset = ahora.getTimezoneOffset();
                             const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
                             document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
                             document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
                         },
-                        originalSubmitText: 'Guardar Reporte'
+                        originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
                     }
                 );
 
