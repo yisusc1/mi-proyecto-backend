@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Instalación</title>
+    <link rel="stylesheet" href="minimal-style.css">
+</head>
+<body>
+    <div class="container" id="password-container">
+        <div class="form-header">
+            <h1>Acceso para Instaladores</h1>
+            <p>Ingrese la clave para acceder.</p>
+        </div>
+        <form id="password-form">
+            <div class="form-group">
+                <label for="password">Clave de Acceso</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Ingresar</button>
+        </form>
+    </div>
+
+    <div class="container" id="form-container" style="display:none;">
+        <div class="form-header">
+            <h1>Reporte de Instalación</h1>
+            <p>Llenar los datos técnicos de la instalación.</p>
+        </div>
+        <form id="reporteForm">
+            <div class="form-group"><label for="fecha_reporte">Fecha</label><input type="text" id="fecha_reporte" name="fecha_reporte" readonly required></div>
+            <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
+            <div class="form-group"><label for="equipo">Equipo</label><input type="text" id="equipo" name="equipo" required></div>
+            <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" required></div>
+            <div class="form-group"><label for="si_asignado">SI Asignado</label><input type="text" id="si_asignado" name="si_asignado"></div>
+            <div class="form-group"><label for="pw_asignado">PW Asignado</label><input type="text" id="pw_asignado" name="pw_asignado" placeholder="Ej: PW1 o PW20500"></div>
+            <div class="form-group"><label for="mac">MAC</label><input type="text" id="mac" name="mac"></div>
+            <div class="form-group"><label for="precinto">Precinto</label><input type="text" id="precinto" name="precinto" pattern="[0-9]{8}" title="Debe contener exactamente 8 dígitos numéricos." maxlength="8"></div>
+            <div class="form-group"><label for="onu_pon">ONU PON</label><input type="text" id="onu_pon" name="onu_pon"></div>
+            <div class="form-group"><label for="router">Router</label><input type="text" id="router" name="router"></div>
+            <div class="form-group"><label for="plan_contratado">Plan Contratado</label>
+                <select id="plan_contratado" name="plan_contratado" required>
+                    <option value="" disabled selected>Seleccione un plan</option>
+                    <option value="400 MB Residencial">400 MB Residencial</option>
+                    <option value="600 MB Residencial">600 MB Residencial</option>
+                    <option value="800 MB Residencial">800 MB Residencial</option>
+                    <option value="400 MB Corporativo">400 MB Corporativo</option>
+                    <option value="600 MB Corporativo">600 MB Corporativo</option>
+                    <option value="800 MB Corporativo">800 MB Corporativo</option>
+                    <option value="1 Giga Corporativo">1 Giga Corporativo</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="velocidad_descarga_mbps">V. Descarga (Mbps)</label><input type="number" id="velocidad_descarga_mbps" name="velocidad_descarga_mbps"></div>
+            <div class="form-group"><label for="velocidad_subida_mbps">V. Subida (Mbps)</label><input type="number" id="velocidad_subida_mbps" name="velocidad_subida_mbps"></div>
+            <div class="form-group"><label for="potencia_nap">Potencia NAP</label><input type="number" step="any" id="potencia_nap" name="potencia_nap" min="-30" max="-10"></div>
+            <div class="form-group"><label for="potencia_cliente">Potencia Cliente</label><input type="number" step="any" id="potencia_cliente" name="potencia_cliente"></div>
+            <div class="form-group"><label for="metraje_utilizado_m">Metraje utilizado (m)</label><input type="number" id="metraje_utilizado_m" name="metraje_utilizado_m"></div>
+            <div class="form-group"><label for="metraje_desechado_m">Metraje desechado (m)</label><input type="number" id="metraje_desechado_m" name="metraje_desechado_m"></div>
+            <div class="form-group"><label for="estado_instalacion">Estado de la Instalación</label>
+                <select id="estado_instalacion" name="estado_instalacion" required>
+                    <option value="Exitosa">Exitosa</option>
+                    <option value="En punta">En punta</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="tecnico_1">Técnico 1</label><input type="text" id="tecnico_1" name="tecnico_1" required></div>
+            <div class="form-group"><label for="tecnico_2">Técnico 2</label><input type="text" id="tecnico_2" name="tecnico_2"></div>
+            <div id="status-message" class="status-message"></div>
+            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordForm = document.getElementById('password-form');
+            const passwordContainer = document.getElementById('password-container');
+            const formContainer = document.getElementById('form-container');
+
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (e.target.querySelector('input').value === '0000') {
+                    passwordContainer.style.display = 'none';
+                    formContainer.style.display = 'block';
+
+                    const fechaInput = document.getElementById('fecha_reporte');
+                    const horaInput = document.getElementById('hora_reporte');
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset();
+                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                    
+                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                } else {
+                    alert('Clave incorrecta.');
+                }
+            });
+            
+            document.getElementById('precinto').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+
+            const form = document.getElementById('reporteForm');
+            form.addEventListener('submit', e => {
+                e.preventDefault();
+                const submitButton = form.querySelector('button[type="submit"]');
+                const statusMessage = document.getElementById('status-message');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Guardando...';
+
+                const formData = new FormData(form);
+                const dataObject = Object.fromEntries(formData.entries());
+
+                fetch('/api/reportes/instalacion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataObject)
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Error del servidor');
+                    return response.json();
+                })
+                .then(data => {
+                    statusMessage.className = 'status-message success';
+                    statusMessage.textContent = '¡Reporte guardado con éxito! Abriendo WhatsApp...';
+                    
+                    // --- INICIO: LÓGICA DE WHATSAPP AÑADIDA ---
+                    let message = `*Reporte De instalación:*\n\n` +
+                        `*Fecha:* ${dataObject.fecha_reporte}\n` +
+                        `*Hora:* ${dataObject.hora_reporte}\n` +
+                        `*Equipo:* ${dataObject.equipo || 'N/A'}\n` +
+                        `*Cliente:* ${dataObject.nombre_cliente || 'N/A'}\n` +
+                        `*SI Asignado:* ${dataObject.si_asignado || 'N/A'}\n` +
+                        `*PW Asignado:* ${dataObject.pw_asignado || 'N/A'}\n` +
+                        `*Precinto:* ${dataObject.precinto || 'N/A'}\n` +
+                        `*ONU PON:* ${dataObject.onu_pon || 'N/A'}\n` +
+                        `*Router:* ${dataObject.router || 'N/A'}\n` +
+                        `*MAC:* ${dataObject.mac || 'N/A'}\n` +
+                        `*Instalación:* ${dataObject.estado_instalacion || 'N/A'}\n` +
+                        `*PLAN:* ${dataObject.plan_contratado || 'N/A'}\n` +
+                        `*V. descarga:* ${dataObject.velocidad_descarga_mbps || 'N/A'}\n` +
+                        `*V. Subida:* ${dataObject.velocidad_subida_mbps || 'N/A'}\n` +
+                        `*Potencia NAP:* ${dataObject.potencia_nap || 'N/A'}\n` +
+                        `*Potencia Cliente:* ${dataObject.potencia_cliente || 'N/A'}\n` +
+                        `*Metraje utilizado:* ${dataObject.metraje_utilizado_m || 'N/A'}\n` +
+                        `*Metraje desechado:* ${dataObject.metraje_desechado_m || 'N/A'}\n` +
+                        `*Técnico 1:* ${dataObject.tecnico_1 || 'N/A'}\n` +
+                        `*Técnico 2:* ${dataObject.tecnico_2 || 'N/A'}`;
+
+                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                    // --- FIN: LÓGICA DE WHATSAPP AÑADIDA ---
+
+                    form.reset();
+                    // Restablecer la fecha y hora después de enviar
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset();
+                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                })
+                .catch(error => {
+                    statusMessage.className = 'status-message error';
+                    statusMessage.textContent = `Error: ${error.message}`;
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Guardar y Enviar a WhatsApp';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

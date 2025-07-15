@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Soporte</title>
+    <link rel="stylesheet" href="minimal-style.css">
+    <style>
+        .geo-wrapper { display: flex; align-items: center; gap: 0.5rem; }
+        .geo-wrapper input { flex-grow: 1; }
+        .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
+    </style>
+</head>
+<body>
+    <div class="container" id="password-container">
+        <div class="form-header">
+            <h1>Acceso para Soporte</h1>
+            <p>Ingrese la clave para acceder.</p>
+        </div>
+        <form id="password-form">
+            <div class="form-group"><label for="password">Clave de Acceso</label><input type="password" id="password" required></div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Ingresar</button>
+        </form>
+    </div>
+
+    <div class="container" id="form-container" style="display:none;">
+        <div class="form-header"><h1>Reporte De Soporte</h1></div>
+        <form id="soporteForm">
+            <div class="form-group"><label for="fecha_reporte">Fecha</label><input type="text" id="fecha_reporte" name="fecha_reporte" readonly required></div>
+            <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
+            <div class="form-group"><label for="nombre_cliente">Cliente (Nombre o PW)</label><input type="text" id="nombre_cliente" name="nombre_cliente" placeholder="Ej: PW12345" required></div>
+            <div class="form-group"><label for="precinto">Precinto</label><input type="text" id="precinto" name="precinto" pattern="[0-9]{8}" title="Debe contener exactamente 8 dígitos numéricos." maxlength="8" required></div>
+            <div class="form-group"><label for="caja_nap">Caja Nap</label><input type="text" id="caja_nap" name="caja_nap" required></div>
+            <div class="form-group">
+                <label for="coordenadas">Coordenadas</label>
+                <div class="geo-wrapper">
+                    <input type="text" id="coordenadas" name="coordenadas" placeholder="Presiona el botón para obtener" readonly>
+                    <button type="button" id="geo-btn" class="btn-primary geo-btn">📍</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="cantidad_puertos_nap">Cantidad de Puertos en NAP</label>
+                <select id="cantidad_puertos_nap" name="cantidad_puertos_nap" required>
+                    <option value="" disabled selected>Seleccione</option>
+                    <option value="8">8 Puertos</option>
+                    <option value="16">16 Puertos</option>
+                    <option value="32">32 Puertos</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="puerto_cliente">Puerto del cliente</label>
+                <select id="puerto_cliente" name="puerto_cliente" required disabled>
+                    <option value="">Seleccione primero la cantidad de puertos</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="potencia_dbm">Potencia</label><input type="number" id="potencia_dbm" name="potencia_dbm" min="-30" max="-10" step="any" required></div>
+            <div class="form-group"><label for="zona">Zona</label><input type="text" id="zona" name="zona" required></div>
+            <div class="form-group">
+                <label for="estatus_visita">Estatus</label>
+                <select id="estatus_visita" name="estatus_visita" required>
+                    <option value="Realizado">Realizado</option>
+                    <option value="Cliente reagendo">Cliente reagendó</option>
+                    <option value="No se obtuvo respuesta del cliente">No se obtuvo respuesta del cliente</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="causa_problema">Causa</label><input type="text" id="causa_problema" name="causa_problema" required></div>
+            <div class="form-group"><label for="accion_realizada">Acción Realizada</label><textarea id="accion_realizada" name="accion_realizada" rows="3" placeholder="Ej: Se realizaron ambos conectores mejorando la potencia..."></textarea></div>
+            <div class="form-group"><label for="conectores_utilizados">Conectores utilizados</label><input type="number" id="conectores_utilizados" name="conectores_utilizados" min="0" max="10"></div>
+            <div class="form-group"><label for="metraje_utilizado_m">Metraje utilizado</label><input type="number" id="metraje_utilizado_m" name="metraje_utilizado_m"></div>
+            <div class="form-group"><label for="observaciones">Observaciones Adicionales</label><textarea id="observaciones" name="observaciones" rows="3"></textarea></div>
+            <div class="form-group"><label for="realizado_por_tecnico">Realizado por</label><input type="text" id="realizado_por_tecnico" name="realizado_por_tecnico" required></div>
+            
+            <div id="status-message" class="status-message"></div>
+            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordForm = document.getElementById('password-form');
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (e.target.querySelector('input').value === '1111') {
+                    document.getElementById('password-container').style.display = 'none';
+                    document.getElementById('form-container').style.display = 'block';
+
+                    const fechaInput = document.getElementById('fecha_reporte');
+                    const horaInput = document.getElementById('hora_reporte');
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset();
+                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                } else {
+                    alert('Clave incorrecta.');
+                }
+            });
+
+            document.getElementById('precinto').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+
+            document.getElementById('geo-btn').addEventListener('click', () => {
+                const geoBtn = document.getElementById('geo-btn');
+                const coordsInput = document.getElementById('coordenadas');
+                if (!navigator.geolocation) {
+                    coordsInput.value = 'Geolocalización no soportada.';
+                    return;
+                }
+                geoBtn.textContent = '...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                        geoBtn.textContent = '📍';
+                    },
+                    () => {
+                        coordsInput.value = 'No se pudo obtener la ubicación.';
+                        geoBtn.textContent = '📍';
+                    }
+                );
+            });
+
+            // --- LÓGICA PARA PUERTOS DE CLIENTE DINÁMICOS ---
+            const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
+            const puertoClienteSelect = document.getElementById('puerto_cliente');
+
+            cantidadPuertosSelect.addEventListener('change', function() {
+                const cantidad = parseInt(this.value, 10);
+                puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
+                puertoClienteSelect.disabled = false;
+
+                if (cantidad) {
+                    puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
+                    for (let i = 1; i <= cantidad; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = `Puerto ${i}`;
+                        puertoClienteSelect.appendChild(option);
+                    }
+                } else {
+                    puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
+                    puertoClienteSelect.disabled = true;
+                }
+            });
+
+
+            const form = document.getElementById('soporteForm');
+            form.addEventListener('submit', e => {
+                e.preventDefault();
+                const submitButton = form.querySelector('button[type="submit"]');
+                const statusMessage = document.getElementById('status-message');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Guardando...';
+
+                const formData = new FormData(form);
+                const dataObject = Object.fromEntries(formData.entries());
+
+                fetch('/api/reportes/soporte', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataObject)
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Error del servidor');
+                    return response.json();
+                })
+                .then(data => {
+                    statusMessage.className = 'status-message success';
+                    statusMessage.textContent = '¡Reporte guardado! Abriendo WhatsApp...';
+                    
+                    let message = `*Reporte Técnico de Soporte:*\n\n` +
+                        `*Fecha:* ${dataObject.fecha_reporte}\n` +
+                        `*Hora:* ${dataObject.hora_reporte}\n` +
+                        `*Cliente:* ${dataObject.nombre_cliente || 'N/A'}\n` +
+                        `*Precinto:* ${dataObject.precinto || 'N/A'}\n` +
+                        `*Caja Nap:* ${dataObject.caja_nap || 'N/A'}\n` +
+                        (dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n` : '') +
+                        `*Cantidad de Puertos:* ${dataObject.cantidad_puertos_nap || 'N/A'}\n` +
+                        `*Puerto cliente:* ${dataObject.puerto_cliente || 'N/A'}\n` +
+                        `*Potencia:* ${dataObject.potencia_dbm || 'N/A'}\n` +
+                        `*Zona:* ${dataObject.zona || 'N/A'}\n` +
+                        `*Estatus:* ${dataObject.estatus_visita || 'N/A'}\n` +
+                        `*Causa:* ${dataObject.causa_problema || 'N/A'}\n` +
+                        `*Acción Realizada:* ${dataObject.accion_realizada || 'N/A'}\n` +
+                        `*Conectores utilizados:* ${dataObject.conectores_utilizados || 'N/A'}\n` +
+                        `*Metraje utilizado:* ${dataObject.metraje_utilizado_m || 'N/A'}\n` +
+                        `*Observaciones Adicionales:* ${dataObject.observaciones || 'N/A'}\n` +
+                        `*Realizado por:* ${dataObject.realizado_por_tecnico || 'N/A'}`;
+
+                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                    
+                    form.reset();
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset();
+                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                })
+                .catch(error => {
+                    statusMessage.className = 'status-message error';
+                    statusMessage.textContent = `Error: ${error.message}`;
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Guardar y Enviar a WhatsApp';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

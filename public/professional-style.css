@@ -1,0 +1,204 @@
+/* === FUENTE PROFESIONAL CON PALETA MINIMALISTA === */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Colores de minimal-style.css */
+    --bg-color: #f8f9fa;        /* Fondo gris claro */
+    --card-bg: #ffffff;         /* Blanco para tarjetas y formularios */
+    --border-color: #dee2e6;    /* Borde sutil */
+    --primary-color: #007AFF;    /* Azul primario */
+    --primary-hover: #0056b3;  /* Azul oscuro para hover */
+    --text-primary: #212529;    /* Texto principal negro suave */
+    --text-secondary: #495057;  /* Texto secundario gris oscuro */
+    --success-color: #198754;
+    --error-color: #dc3545;
+    --font-family: 'Inter', sans-serif;
+}
+
+/* === ESTILOS GLOBALES === */
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.main-content {
+    padding: 2rem;
+}
+
+/* === ESTILOS PARA FORMULARIOS === */
+.form-container {
+    max-width: 700px;
+    margin: 2rem auto;
+    background-color: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.form-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background-color: #f8f9fa; /* Fondo gris claro para campos */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+/* === BOTONES === */
+.btn, button {
+    display: inline-block;
+    padding: 0.9rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
+.btn-primary:disabled {
+    background-color: #a0c7ff;
+    cursor: not-allowed;
+}
+
+/* === MENSAJES DE ESTADO === */
+.status-message {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 500;
+    padding: 1rem;
+    border-radius: 8px;
+    display: none;
+}
+.status-message.success {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: var(--success-color);
+    display: block;
+}
+.status-message.error {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--error-color);
+    display: block;
+}
+
+/* === ESTILOS PARA EL PANEL DE ADMINISTRADOR === */
+.admin-container {
+    display: flex;
+    height: 100vh;
+}
+.sidebar {
+    width: 260px;
+    background-color: #e9ecef; /* Barra lateral gris claro */
+    padding: 1.5rem;
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+}
+.sidebar-header {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    color: var(--primary-color);
+}
+.sidebar-nav a {
+    display: block;
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+.sidebar-nav a:hover {
+    background-color: #dee2e6;
+    color: var(--text-primary);
+}
+.sidebar-nav a.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--card-bg);
+}
+.admin-header h1 {
+    margin: 0;
+}
+.controls-bar input[type="date"] {
+    margin-right: 1rem;
+}
+.kanban-container {
+    display: flex;
+    gap: 1.5rem;
+    padding: 2rem;
+    overflow-x: auto;
+    flex-grow: 1;
+}
+.kanban-board {
+    background-color: #f1f3f5; /* Fondo de columna gris muy claro */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    width: 320px;
+    flex-shrink: 0;
+}
+.kanban-board-header {
+    padding: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+}
+.kanban-item {
+    background: var(--card-bg);
+    padding: 1rem;
+    margin: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    cursor: grab;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}

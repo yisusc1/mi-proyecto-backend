@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Principal</title>
+    <link rel="stylesheet" href="minimal-style.css">
+    <style>
+        /* Estilos adicionales para el menú */
+        .menu-container {
+            max-width: 900px;
+            margin: 3rem auto;
+            text-align: center;
+            padding: 1rem;
+        }
+        .menu-container h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        .menu-options {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+        @media (min-width: 768px) {
+            .menu-options {
+                grid-template-columns: repeat(2, 1fr); /* 2 columnas en pantallas más grandes */
+            }
+        }
+        .menu-card {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.05);
+            text-decoration: none;
+            color: var(--text-color);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            display: block;
+            border: 1px solid var(--border-color);
+        }
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-color);
+        }
+        .menu-card h2 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-container">
+        <h1>Menú Principal</h1>
+        <p>Selecciona el formulario al que deseas acceder.</p>
+        <div class="menu-options">
+            <a href="/solicitud.html" class="menu-card">
+                <h2>Nueva Solicitud de Servicio</h2>
+                <p>Para registrar solicitudes de nuevos clientes.</p>
+            </a>
+
+            <a href="/admin.html" class="menu-card">
+                <h2>Panel de Administrador</h2>
+                <p>Para asignar y planificar instalaciones.</p>
+            </a>
+
+            <a href="/factibilidad.html" class="menu-card">
+                <h2>Análisis de Factibilidad</h2>
+                <p>Verifica la cobertura y la NAP más cercana para un cliente.</p>
+            </a>
+            
+            <a href="/reporte.html" class="menu-card">
+                <h2>Reporte de Instalación</h2>
+                <p>Para que los técnicos registren las instalaciones completadas.</p>
+            </a>
+            
+            <a href="/soporte.html" class="menu-card">
+                <h2>Reporte Técnico de Soporte</h2>
+                <p>Para registrar visitas y soluciones de soporte técnico.</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

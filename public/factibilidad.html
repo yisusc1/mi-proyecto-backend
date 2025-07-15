@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Factibilidad</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="minimal-style.css">
+    <style>
+        #map { height: 400px; width: 100%; border-radius: 8px; margin-top: 1.5rem; }
+        .results-box { margin-top: 1.5rem; padding: 1.5rem; border: 1px solid var(--border-color); border-radius: 8px; }
+        .results-box h3 { margin-top: 0; }
+        .factible { color: var(--success-color); font-weight: bold; }
+        .no-factible { color: var(--error-color); font-weight: bold; }
+        /* Estilos para el botón de geolocalización */
+        .geo-wrapper { display: flex; align-items: center; gap: 0.5rem; }
+        .geo-wrapper input { flex-grow: 1; }
+        .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-header">
+            <h1>Análisis de Factibilidad</h1>
+            <p>Ingresa las coordenadas o usa el botón para obtener la ubicación de tu dispositivo.</p>
+        </div>
+
+        <div class="form-group">
+            <label for="coords">Coordenadas del Cliente</label>
+            <div class="geo-wrapper">
+                <input type="text" id="coords" placeholder="Ej: 10.48059, -66.90361">
+                <button type="button" id="geo-btn" class="btn-primary geo-btn">📍</button>
+            </div>
+        </div>
+        
+        <button id="verify-btn" class="btn-primary" style="width: 100%;">Verificar Factibilidad</button>
+
+        <div id="map"></div>
+
+        <div id="results" class="results-box" style="display: none;">
+            <h3>Resultados del Análisis</h3>
+            <p><strong>NAP más cercana:</strong> <span id="nap-name"></span></p>
+            <p><strong>Distancia:</strong> <span id="distance"></span> metros</p>
+            <p><strong>Estado:</strong> <span id="status"></span></p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const map = L.map('map').setView([10.48, -66.90], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            let clientMarker, napMarker, polyline;
+            const coordsInput = document.getElementById('coords');
+            const geoBtn = document.getElementById('geo-btn');
+
+            // --- INICIO: LÓGICA PARA EL NUEVO BOTÓN ---
+            geoBtn.addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    alert('Geolocalización no soportada por tu navegador.');
+                    return;
+                }
+                geoBtn.textContent = '...';
+                geoBtn.disabled = true;
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lon = position.coords.longitude.toFixed(6);
+                        coordsInput.value = `${lat}, ${lon}`; // Rellena el campo automáticamente
+                        geoBtn.textContent = '📍';
+                        geoBtn.disabled = false;
+                    }, 
+                    (error) => {
+                        alert('No se pudo obtener la ubicación.');
+                        geoBtn.textContent = '📍';
+                        geoBtn.disabled = false;
+                    }
+                );
+            });
+            // --- FIN: LÓGICA PARA EL NUEVO BOTÓN ---
+
+            const verifyBtn = document.getElementById('verify-btn');
+            verifyBtn.addEventListener('click', () => {
+                const [lat, lon] = coordsInput.value.split(',').map(coord => parseFloat(coord.trim()));
+
+                if (!lat || !lon) {
+                    alert('Por favor, ingresa coordenadas válidas.');
+                    return;
+                }
+
+                if (clientMarker) map.removeLayer(clientMarker);
+                if (napMarker) map.removeLayer(napMarker);
+                if (polyline) map.removeLayer(polyline);
+                document.getElementById('results').style.display = 'none';
+                verifyBtn.textContent = 'Verificando...';
+                verifyBtn.disabled = true;
+
+                fetch('/api/factibilidad', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitud: lat, longitud: lon })
+                })
+                .then(response => {
+                    if (!response.ok) return response.json().then(err => { throw new Error(err.error || 'Error en la respuesta del servidor') });
+                    return response.json();
+                })
+                .then(data => {
+                    const clientLatLng = [data.cliente.latitud, data.cliente.longitud];
+                    const napLatLng = [data.nap_cercana.latitud, data.nap_cercana.longitud];
+
+                    clientMarker = L.marker(clientLatLng).addTo(map).bindPopup('Ubicación del Cliente').openPopup();
+                    napMarker = L.marker(napLatLng).addTo(map).bindPopup(`NAP: ${data.nap_cercana.nombre_nap}`);
+                    
+                    polyline = L.polyline([clientLatLng, napLatLng], {color: 'red'}).addTo(map);
+                    map.fitBounds(polyline.getBounds().pad(0.1));
+
+                    document.getElementById('nap-name').textContent = data.nap_cercana.nombre_nap;
+                    document.getElementById('distance').textContent = data.distancia_metros;
+                    const statusEl = document.getElementById('status');
+                    if (data.es_factible) {
+                        statusEl.textContent = 'FACTIBLE';
+                        statusEl.className = 'factible';
+                    } else {
+                        statusEl.textContent = 'NO FACTIBLE (muy lejos)';
+                        statusEl.className = 'no-factible';
+                    }
+                    document.getElementById('results').style.display = 'block';
+                })
+                .catch(error => alert(error.message))
+                .finally(() => {
+                    verifyBtn.textContent = 'Verificar Factibilidad';
+                    verifyBtn.disabled = false;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

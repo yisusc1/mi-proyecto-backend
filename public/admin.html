@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Planificación</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.css">
+    <link rel="stylesheet" href="professional-style.css">
+</head>
+<body>
+    <div class="container" id="password-container" style="max-width: 450px; margin: 5rem auto;">
+        <div class="form-header">
+            <h1>Panel de Administrador</h1>
+            <p>Ingresa tu clave para acceder al panel.</p>
+        </div>
+        <form id="password-form">
+            <div class="form-group"><label for="password">Clave de Acceso</label><input type="password" id="password" required></div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+        </form>
+    </div>
+
+    <div class="admin-container" id="admin-panel" style="display:none;">
+        <aside class="sidebar">
+            <h2 class="sidebar-header">Mi Proyecto</h2>
+            <nav class="sidebar-nav">
+                <a href="/index.html">Dashboard</a>
+                <a href="/admin.html" class="active">Planificación</a>
+                <a href="/solicitud.html">Nueva Solicitud</a>
+            </nav>
+        </aside>
+        <main style="width: 100%; display: flex; flex-direction: column;">
+            <header class="admin-header">
+                <h1>Panel de Planificación</h1>
+                <div class="controls-bar">
+                    <input type="date" id="fecha-planificacion">
+                    <button id="add-equipo-btn" class="btn btn-primary">➕ Añadir Equipo</button>
+                </div>
+            </header>
+            <div id="admin-board" class="kanban-container"></div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.js"></script>
+    <script>
+        // --- El código JavaScript de tu panel anterior no necesita cambios ---
+        // Pega aquí el contenido de la etiqueta <script> de tu último admin.html funcional.
+        // Asegúrate de pegar todo, desde document.addEventListener... hasta el final.
+        document.addEventListener('DOMContentLoaded', () => {
+            let kanban;
+            let allTechnicians = [];
+            const dateSelector = document.getElementById('fecha-planificacion');
+            const boardContainer = document.getElementById('admin-board');
+            const passwordForm = document.getElementById('password-form');
+
+            passwordForm.addEventListener('submit', e => {
+                e.preventDefault();
+                if (e.target.querySelector('input').value === '666') {
+                    document.getElementById('password-container').style.display = 'none';
+                    document.getElementById('admin-panel').style.display = 'flex';
+                    dateSelector.valueAsDate = new Date();
+                    loadBoardForDate(dateSelector.value);
+                } else {
+                    alert('Clave incorrecta');
+                }
+            });
+
+            dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
+
+            function loadBoardForDate(dateString) {
+                boardContainer.innerHTML = '<p style="padding: 2rem;">Cargando datos...</p>';
+                fetch(`/api/planificacion/${dateString}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error al cargar datos del servidor');
+                        return response.json();
+                    })
+                    .then(data => {
+                        allTechnicians = data.technicians.map(t => t.nombre);
+                        boardContainer.innerHTML = '';
+                        initializeKanban(data.pendingInstallations, data.plannedInstallations);
+                    })
+                    .catch(err => {
+                        boardContainer.innerHTML = `<p style="color:red; padding: 2rem;">${err.message}</p>`;
+                    });
+            }
+
+            function initializeKanban(pending, planned) {
+                const pendingItems = pending.map(solicitud => ({
+                    id: solicitud.id,
+                    title: `<strong>${solicitud.nombre_cliente}</strong><br><small>${solicitud.sector || 'Sin sector'}</small>`
+                }));
+
+                const boards = [{ id: 'pendientes', title: 'Solicitudes Pendientes', item: pendingItems, class: 'kanban-board' }];
+                
+                const teams = {};
+                planned.forEach(task => {
+                    const teamKey = task.equipo;
+                    if (!teams[teamKey]) {
+                        teams[teamKey] = { id: teamKey, equipo: task.equipo, tecnico1: task.tecnico1, tecnico2: task.tecnico2, tasks: [] };
+                    }
+                    teams[teamKey].tasks.push({ 
+                        id: task.solicitud_id, 
+                        title: `<strong>${task.nombre_cliente}</strong><br><small>${task.sector || 'Sin sector'}</small><small class="assigned-marker" style="color:var(--success-color);display:block;">✓ Asignado</small>`
+                    });
+                });
+
+                Object.values(teams).forEach(team => {
+                    boards.push({
+                        id: team.id,
+                        title: createTeamHeaderHTML(team.equipo, team.tecnico1, team.tecnico2),
+                        item: team.tasks,
+                        class: 'kanban-board'
+                    });
+                });
+
+                kanban = new jKanban({
+                    element: '#admin-board',
+                    gutter: '1.5rem',
+                    widthBoard: '320px',
+                    boards: boards,
+                    dropEl: function(el, target, source) {
+                        const solicitudId = el.dataset.eid;
+                        const targetBoard = target.closest('.kanban-board');
+                        const sourceBoard = source.closest('.kanban-board');
+                        
+                        const handleResponse = (response) => {
+                            if (!response.ok) return response.json().then(err => { throw new Error(err.error || 'Error del servidor') });
+                            return response.json();
+                        };
+                        
+                        const handleError = (error, originalBoardId) => {
+                            alert(`Error al guardar: ${error.message}`);
+                            const cardData = { id: solicitudId, title: el.innerHTML };
+                            kanban.removeElement(solicitudId);
+                            kanban.addElement(originalBoardId, cardData);
+                        };
+
+                        if (targetBoard.dataset.id === 'pendientes') {
+                            fetch('/api/planificacion/unassign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ solicitud_id: solicitudId }) })
+                            .then(handleResponse)
+                            .then(() => {
+                                const marker = el.querySelector('.assigned-marker');
+                                if (marker) marker.remove();
+                            })
+                            .catch(err => handleError(err, targetBoard.dataset.id));
+                        } else {
+                            const header = targetBoard.querySelector('.board-header-controls');
+                            if (!header) return false;
+                            
+                            const assignmentData = {
+                                solicitud_id: solicitudId, nombre_cliente: el.querySelector('strong').innerText, sector: el.querySelector('small').innerText,
+                                equipo: header.querySelector('.equipo-select').value, tecnico1: header.querySelector('.tecnico-select.tecnico1').value,
+                                tecnico2: header.querySelector('.tecnico-select.tecnico2').value, fecha_asignada: dateSelector.value
+                            };
+
+                            if (!assignmentData.equipo || !assignmentData.tecnico1) {
+                                alert('Configure el Equipo y Técnico 1 antes de asignar.');
+                                return false;
+                            }
+                            
+                            fetch('/api/planificacion/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignmentData) })
+                            .then(handleResponse)
+                            .then(data => {
+                                if (!el.querySelector('.assigned-marker')) {
+                                    el.innerHTML += '<small class="assigned-marker" style="color:var(--success-color);display:block;">✓ Asignado</small>';
+                                }
+                                console.log(data.message);
+                            })
+                            .catch(err => handleError(err, sourceBoard.dataset.id));
+                        }
+                    }
+                });
+                updateAllDropdowns();
+            }
+
+            document.getElementById('add-equipo-btn').addEventListener('click', () => {
+                const boardId = 'equipo-' + Date.now();
+                kanban.addBoards([{ id: boardId, title: createTeamHeaderHTML(), item: [], class: 'kanban-board' }]);
+                updateAllDropdowns();
+            });
+            
+            boardContainer.addEventListener('change', (e) => {
+                if(e.target.matches('select')) {
+                    updateAllDropdowns();
+                }
+            });
+
+            function updateAllDropdowns() {
+                const selectedEquipos = new Set();
+                document.querySelectorAll('.equipo-select').forEach(s => { if (s.value) selectedEquipos.add(s.value); });
+                document.querySelectorAll('.equipo-select').forEach(select => {
+                    for (const option of select.options) {
+                        if (option.value === "") continue;
+                        option.disabled = selectedEquipos.has(option.value) && option.value !== select.value;
+                    }
+                });
+
+                const selectedTecnicos = new Set();
+                document.querySelectorAll('.tecnico-select').forEach(s => { if (s.value) selectedTecnicos.add(s.value); });
+                document.querySelectorAll('.tecnico-select').forEach(select => {
+                    for (const option of select.options) {
+                        if (option.value === "") continue;
+                        option.disabled = selectedTecnicos.has(option.value) && option.value !== select.value;
+                    }
+                });
+            }
+
+            function createTeamHeaderHTML(equipo = '', tec1 = '', tec2 = '') {
+                const letraOptions = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => `<option value="Equipo ${l}" ${`Equipo ${l}` === equipo ? 'selected' : ''}>Equipo ${l}</option>`).join('');
+                const tec1Options = allTechnicians.map(t => `<option value="${t}" ${t === tec1 ? 'selected' : ''}>${t}</option>`).join('');
+                const tec2Options = allTechnicians.map(t => `<option value="${t}" ${t === tec2 ? 'selected' : ''}>${t}</option>`).join('');
+                return `
+                    <div class="board-header-controls" style="padding: 1rem; border-bottom: 1px solid var(--border-color);">
+                        <select class="equipo-select"><option value="">Seleccione Letra</option>${letraOptions}</select>
+                        <select class="tecnico-select tecnico1"><option value="">Seleccione Técnico 1</option>${tec1Options}</select>
+                        <select class="tecnico-select tecnico2"><option value="">Técnico 2 (Opcional)</option>${tec2Options}</select>
+                    </div>`;
+            }
+        });
+    </script>
+</body>
+</html>

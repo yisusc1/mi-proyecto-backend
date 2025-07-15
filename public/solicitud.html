@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Solicitud</title>
+    <link rel="stylesheet" href="minimal-style.css">
+    <style>
+        .geo-wrapper, .cedula-wrapper { display: flex; align-items: center; gap: 0.5rem; }
+        .geo-wrapper input, .cedula-wrapper input { flex-grow: 1; }
+        .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
+        .cedula-wrapper select { width: auto; }
+        .otro-campo { display: none; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-header">
+            <h1>Nueva Solicitud de Servicio</h1>
+            <p>Complete los datos para procesar la solicitud.</p>
+        </div>
+        <form id="solicitudForm">
+            <div class="form-group">
+                <label for="fecha_solicitud">Fecha de Solicitud</label>
+                <input type="date" id="fecha_solicitud" name="fecha_solicitud" readonly required>
+            </div>
+            
+            <div class="form-group"><label for="nombre_cliente">Nombre y Apellido</label><input type="text" id="nombre_cliente" name="nombre_cliente" required></div>
+            
+            <div class="form-group">
+                <label for="cedula_numero">Cédula</label>
+                <div class="cedula-wrapper">
+                    <select id="cedula_nacionalidad" name="cedula_nacionalidad">
+                        <option value="V">V</option>
+                        <option value="E">E</option>
+                    </select>
+                    <input type="text" id="cedula_numero" name="cedula_numero" placeholder="Ej: 12345678" maxlength="8" pattern="[0-9]{7,8}" required>
+                </div>
+            </div>
+
+            <div class="form-group"><label for="contacto_1">Teléfono de Contacto</label><input type="tel" id="contacto_1" name="contacto_1" placeholder="Ej: 0412-1234567" required></div>
+            <div class="form-group"><label for="contacto_2">Teléfono 2 (Opcional)</label><input type="tel" id="contacto_2" name="contacto_2" placeholder="Ej: 0212-9876543"></div>
+            
+            <div class="form-group"><label for="ubicacion">Ubicación</label>
+                <select id="ubicacion" name="ubicacion" required><option value="" disabled selected>Seleccione</option><option value="Carrizal">Carrizal</option><option value="Tejerias">Tejerias</option><option value="Puerta Morocha">Puerta Morocha</option><option value="San Diego">San Diego</option><option value="Caracas">Caracas</option><option value="San Antonio">San Antonio</option><option value="Los Teques">Los Teques</option></select>
+            </div>
+
+            <div class="form-group"><label for="municipio">Municipio</label>
+                <select id="municipio" name="municipio" required><option value="" disabled selected>Seleccione</option><option value="Guaicaipuro">Guaicaipuro</option><option value="Los Salias">Los Salias</option><option value="Cecilio Acosta">Cecilio Acosta</option><option value="Libertador">Libertador</option><option value="Carrizal">Carrizal</option><option value="Revenga">Revenga</option><option value="Santos Michelena">Santos Michelena</option><option value="Sucre">Sucre</option><option value="Otro">Otro</option></select>
+            </div>
+
+            <div class="form-group"><label for="sector">Sector</label><input type="text" id="sector" name="sector" required></div>
+            <div class="form-group"><label for="calle">Calle o Avenida</label><input type="text" id="calle" name="calle" required></div>
+            <div class="form-group"><label for="casa">Casa o Edificio</label><input type="text" id="casa" name="casa" required></div>
+            
+            <div class="form-group">
+                <label for="coordenadas">Coordenadas</label>
+                <div class="geo-wrapper">
+                    <input type="text" id="coordenadas" name="coordenadas" placeholder="Presiona el botón para obtener la ubicación" readonly>
+                    <button type="button" id="geo-btn" class="btn-primary geo-btn">📍</button>
+                </div>
+            </div>
+
+            <div class="form-group"><label for="email">Correo electrónico</label><input type="email" id="email" name="email" required></div>
+            
+            <div class="form-group"><label for="tipo_servicio">Tipo de Servicio</label>
+                <select id="tipo_servicio" name="tipo_servicio" required><option value="" disabled selected>Seleccione</option><option value="Domiciliario">Domiciliario</option><option value="Empresarial">Empresarial</option></select>
+            </div>
+
+            <div class="form-group"><label for="fecha_disponibilidad">Disponibilidad para Instalación</label><input type="date" id="fecha_disponibilidad" name="fecha_disponibilidad" required></div>
+
+            <div class="form-group">
+                <label for="asesor">Asesor</label>
+                <select id="asesor" name="asesor" required><option value="" disabled selected>Seleccione</option><option value="Yaisen Herrera">Yaisen Herrera</option><option value="Lorena Esqueda">Lorena Esqueda</option><option value="Cindy Infante">Cindy Infante</option><option value="Randy Moreno">Randy Moreno</option><option value="Otro">Otro</option></select>
+                <input type="text" id="otro_asesor" name="otro_asesor" class="otro-campo" placeholder="Especifique otro asesor">
+            </div>
+            
+            <div class="form-group">
+                <label for="fuente_conocimiento">¿Cómo nos conoció?</label>
+                <select id="fuente_conocimiento" name="fuente_conocimiento" required><option value="" disabled selected>Seleccione</option><option value="Folleto">Folleto</option><option value="Valla Publicitaria">Valla Publicitaria</option><option value="Evento">Evento</option><option value="Redes Sociales">Redes Sociales</option><option value="Recomendación">Recomendación</option><option value="Otro">Otro</option></select>
+                <input type="text" id="otra_fuente" name="otra_fuente" class="otro-campo" placeholder="Especifique otra fuente">
+            </div>
+
+            <div id="status-message" class="status-message"></div>
+            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fechaInput = document.getElementById('fecha_solicitud');
+            const hoy = new Date();
+            const offset = hoy.getTimezoneOffset();
+            const hoyLocal = new Date(hoy.getTime() - (offset * 60 * 1000));
+            fechaInput.value = hoyLocal.toISOString().split('T')[0];
+
+            document.getElementById('geo-btn').addEventListener('click', () => {
+                const geoBtn = document.getElementById('geo-btn');
+                const coordsInput = document.getElementById('coordenadas');
+                if (!navigator.geolocation) {
+                    coordsInput.value = 'Geolocalización no soportada.';
+                    return;
+                }
+                geoBtn.textContent = '...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                        geoBtn.textContent = '📍';
+                    },
+                    () => {
+                        coordsInput.value = 'No se pudo obtener la ubicación.';
+                        geoBtn.textContent = '📍';
+                    }
+                );
+            });
+
+            const asesorSelect = document.getElementById('asesor');
+            const otroAsesorInput = document.getElementById('otro_asesor');
+            asesorSelect.addEventListener('change', function() {
+                otroAsesorInput.style.display = this.value === 'Otro' ? 'block' : 'none';
+                otroAsesorInput.required = this.value === 'Otro';
+            });
+
+            const fuenteSelect = document.getElementById('fuente_conocimiento');
+            const otraFuenteInput = document.getElementById('otra_fuente');
+            fuenteSelect.addEventListener('change', function() {
+                otraFuenteInput.style.display = this.value === 'Otro' ? 'block' : 'none';
+                otraFuenteInput.required = this.value === 'Otro';
+            });
+
+            function formatPhoneNumber(input) {
+                let value = input.value.replace(/\D/g, '');
+                if (value.length > 4) {
+                    value = `${value.slice(0, 4)}-${value.slice(4)}`;
+                }
+                input.value = value.slice(0, 12);
+            }
+            document.getElementById('contacto_1').addEventListener('input', (e) => formatPhoneNumber(e.target));
+            document.getElementById('contacto_2').addEventListener('input', (e) => formatPhoneNumber(e.target));
+            
+            document.getElementById('cedula_numero').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+
+            const form = document.getElementById('solicitudForm');
+            form.addEventListener('submit', e => {
+                e.preventDefault();
+                const submitButton = form.querySelector('button[type="submit"]');
+                const statusMessage = document.getElementById('status-message');
+                submitButton.disabled = true;
+                submitButton.textContent = 'Guardando...';
+
+                const formData = new FormData(form);
+                const dataObject = Object.fromEntries(formData.entries());
+
+                dataObject.cedula = `${dataObject.cedula_nacionalidad}-${dataObject.cedula_numero}`;
+                delete dataObject.cedula_nacionalidad;
+                delete dataObject.cedula_numero;
+
+                if (dataObject.asesor === 'Otro') dataObject.asesor = dataObject.otro_asesor;
+                if (dataObject.fuente_conocimiento === 'Otro') dataObject.fuente_conocimiento = dataObject.otra_fuente;
+                delete dataObject.otro_asesor;
+                delete dataObject.otra_fuente;
+
+                fetch('/api/solicitudes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataObject)
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Error del servidor al guardar');
+                        return response.json();
+                    })
+                    .then(data => {
+                        statusMessage.className = 'status-message success';
+                        statusMessage.textContent = '¡Solicitud guardada! Abriendo WhatsApp...';
+                        
+                        const fechaSolicitud = new Date(dataObject.fecha_solicitud + 'T00:00:00').toLocaleDateString('es-ES');
+                        const fechaDisponibilidad = new Date(dataObject.fecha_disponibilidad + 'T00:00:00').toLocaleDateString('es-ES');
+                        
+                        let message = `*Nueva Solicitud de Servicio*\n\n` +
+                            `*Fecha de Solicitud:* ${fechaSolicitud}\n` +
+                            `*Nombre y Apellido:* ${dataObject.nombre_cliente}\n` +
+                            `*Cédula:* ${dataObject.cedula}\n` +
+                            `*Contacto 1:* ${dataObject.contacto_1}\n` +
+                            (dataObject.contacto_2 ? `*Contacto 2:* ${dataObject.contacto_2}\n` : '') +
+                            `*Ubicación:* ${dataObject.ubicacion}, ${dataObject.municipio}, ${dataObject.sector}\n` +
+                            `*Dirección:* ${dataObject.calle}, ${dataObject.casa}\n` +
+                            (dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n` : '') +
+                            `*Correo:* ${dataObject.email}\n` +
+                            `*Tipo de Servicio:* ${dataObject.tipo_servicio}\n` +
+                            `*Disponibilidad para instalación:* ${fechaDisponibilidad}\n` +
+                            `*Asesor:* ${dataObject.asesor}\n` +
+                            `*Cómo nos conoció:* ${dataObject.fuente_conocimiento}`;
+
+                        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                        
+                        form.reset();
+                        document.getElementById('fecha_solicitud').value = hoyLocal.toISOString().split('T')[0];
+                    })
+                    .catch(error => {
+                        statusMessage.className = 'status-message error';
+                        statusMessage.textContent = `Error: ${error.message}`;
+                    })
+                    .finally(() => {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Guardar y Enviar a WhatsApp';
+                    });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+/* --- Paleta de Colores y Estilos Base --- */
+:root {
+    --primary-color: #007AFF; /* Azul vibrante para acciones principales */
+    --background-color: #f8f9fa; /* Gris muy claro para el fondo */
+    --form-background: #ffffff; /* Blanco para el formulario */
+    --text-color: #212529; /* Negro suave para texto */
+    --label-color: #495057; /* Gris oscuro para etiquetas */
+    --border-color: #dee2e6; /* Borde sutil */
+    --success-color: #198754; /* Verde para mensajes de éxito */
+    --error-color: #dc3545;   /* Rojo para mensajes de error */
+    --font-family: 'Inter', sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 2rem 1rem;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 650px;
+    margin: 0 auto;
+    background-color: var(--form-background);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Encabezado del Formulario --- */
+.form-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.form-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+}
+
+.form-header p {
+    font-size: 1rem;
+    color: var(--label-color);
+    margin: 0;
+}
+
+/* --- Estilos de Campos del Formulario --- */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--label-color);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="password"],
+select,
+textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+}
+
+/* --- Estilos de Botones --- */
+button {
+    padding: 0.9rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+}
+
+.btn-primary:disabled {
+    background-color: #a0c7ff;
+    cursor: not-allowed;
+}
+
+/* --- Mensajes de Estado --- */
+.status-message, #password-status {
+    text-align: center;
+    margin-top: 1rem;
+    font-weight: 500;
+    padding: 0.8rem;
+    border-radius: 8px;
+    display: none; /* Oculto por defecto */
+}
+
+.status-message.success {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: var(--success-color);
+    display: block;
+}
+
+.status-message.error {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--error-color);
+    display: block;
+}
