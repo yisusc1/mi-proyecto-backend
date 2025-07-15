@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reporte de Instalación</title>
     <link rel="stylesheet" href="minimal-style.css">
+    <style>
+        /* Estilos para el enlace de WhatsApp, si no están en minimal-style.css */
+        .whatsapp-link-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .whatsapp-link-container a {
+            display: inline-block;
+            background-color: #25D366; /* Color de WhatsApp */
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .whatsapp-link-container a:hover {
+            background-color: #1DA851;
+        }
+    </style>
 </head>
 <body>
     <div class="container" id="password-container">
@@ -63,108 +83,179 @@
             </div>
             <div class="form-group"><label for="tecnico_1">Técnico 1</label><input type="text" id="tecnico_1" name="tecnico_1" required></div>
             <div class="form-group"><label for="tecnico_2">Técnico 2</label><input type="text" id="tecnico_2" name="tecnico_2"></div>
-            <div id="status-message" class="status-message"></div>
-            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
-        </form>
+            
+            <div id="reporteForm-status-message" class="status-message"></div>
+            <div id="reporteForm-whatsapp-container" class="whatsapp-link-container" style="display: none;">
+                <p>El reporte ha sido guardado. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p>
+                <a id="reporteForm-whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a>
+            </div>
+            <button type="submit" class="btn-primary" id="reporteForm-btn">Guardar Reporte</button>
+            </form>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const passwordForm = document.getElementById('password-form');
-            const passwordContainer = document.getElementById('password-container');
-            const formContainer = document.getElementById('form-container');
+        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP (Mantenla una sola vez en tu HTML o en un archivo JS separado) ---
+        function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
+            const form = document.getElementById(formId);
+            if (!form) {
+                console.error(`Formulario con ID '${formId}' no encontrado.`);
+                return;
+            }
 
-            passwordForm.addEventListener('submit', function(e) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            const statusMessage = form.querySelector(`#${formId}-status-message`); // Busca por ID específico
+            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`); // Busca por ID específico
+            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`); // Busca por ID específico
+
+            // Validar que todos los elementos necesarios existan
+            if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) {
+                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs como '${formId}-status-message', '${formId}-whatsapp-container', '${formId}-whatsapp-link' y el ID del botón de submit estén correctos.`);
+                return;
+            }
+
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (e.target.querySelector('input').value === '0000') {
-                    passwordContainer.style.display = 'none';
-                    formContainer.style.display = 'block';
-
-                    const fechaInput = document.getElementById('fecha_reporte');
-                    const horaInput = document.getElementById('hora_reporte');
-                    const ahora = new Date();
-                    const offset = ahora.getTimezoneOffset();
-                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                    
-                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
-                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                } else {
-                    alert('Clave incorrecta.');
-                }
-            });
-            
-            document.getElementById('precinto').addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/\D/g, '');
-            });
-
-            const form = document.getElementById('reporteForm');
-            form.addEventListener('submit', e => {
-                e.preventDefault();
-                const submitButton = form.querySelector('button[type="submit"]');
-                const statusMessage = document.getElementById('status-message');
+                
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
+                statusMessage.className = 'status-message'; // Reinicia la clase
+                statusMessage.textContent = ''; // Limpia el mensaje
+                whatsappLinkContainer.style.display = 'none'; // Oculta el enlace de WhatsApp
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
 
-                fetch('/api/reportes/instalacion', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataObject)
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Error del servidor');
-                    return response.json();
-                })
-                .then(data => {
+                // --- Lógica de pre-procesamiento de datos específica del formulario (si aplica) ---
+                // Aquí podrías añadir un 'preProcessor' en las opciones si cada form tiene lógicas muy distintas.
+                // Para este caso, mantenemos la lógica de Solicitud y Reporte en sus respectivos constructores de mensaje
+                // o en una función de pre-procesamiento externa si se repite.
+                // Por ahora, se asume que 'dataObject' tal como está extraído de FormData es suficiente
+                // para el 'messageBuilder'.
+
+                try {
+                    const response = await fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataObject)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+                        throw new Error(errorData.message || 'Error del servidor al guardar');
+                    }
+
                     statusMessage.className = 'status-message success';
-                    statusMessage.textContent = '¡Reporte guardado con éxito! Abriendo WhatsApp...';
+                    statusMessage.textContent = '¡Información guardada con éxito!';
                     
-                    // --- INICIO: LÓGICA DE WHATSAPP AÑADIDA ---
-                    let message = `*Reporte De instalación:*\n\n` +
-                        `*Fecha:* ${dataObject.fecha_reporte}\n` +
-                        `*Hora:* ${dataObject.hora_reporte}\n` +
-                        `*Equipo:* ${dataObject.equipo || 'N/A'}\n` +
-                        `*Cliente:* ${dataObject.nombre_cliente || 'N/A'}\n` +
-                        `*SI Asignado:* ${dataObject.si_asignado || 'N/A'}\n` +
-                        `*PW Asignado:* ${dataObject.pw_asignado || 'N/A'}\n` +
-                        `*Precinto:* ${dataObject.precinto || 'N/A'}\n` +
-                        `*ONU PON:* ${dataObject.onu_pon || 'N/A'}\n` +
-                        `*Router:* ${dataObject.router || 'N/A'}\n` +
-                        `*MAC:* ${dataObject.mac || 'N/A'}\n` +
-                        `*Instalación:* ${dataObject.estado_instalacion || 'N/A'}\n` +
-                        `*PLAN:* ${dataObject.plan_contratado || 'N/A'}\n` +
-                        `*V. descarga:* ${dataObject.velocidad_descarga_mbps || 'N/A'}\n` +
-                        `*V. Subida:* ${dataObject.velocidad_subida_mbps || 'N/A'}\n` +
-                        `*Potencia NAP:* ${dataObject.potencia_nap || 'N/A'}\n` +
-                        `*Potencia Cliente:* ${dataObject.potencia_cliente || 'N/A'}\n` +
-                        `*Metraje utilizado:* ${dataObject.metraje_utilizado_m || 'N/A'}\n` +
-                        `*Metraje desechado:* ${dataObject.metraje_desechado_m || 'N/A'}\n` +
-                        `*Técnico 1:* ${dataObject.tecnico_1 || 'N/A'}\n` +
-                        `*Técnico 2:* ${dataObject.tecnico_2 || 'N/A'}`;
+                    // Ocultar el botón de guardar
+                    submitButton.style.display = 'none';
 
-                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
-                    // --- FIN: LÓGICA DE WHATSAPP AÑADIDA ---
+                    // Construir el mensaje de WhatsApp usando la función proporcionada
+                    const whatsappMessage = messageBuilder(dataObject);
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+                    
+                    whatsappLink.href = whatsappUrl;
+                    whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
 
-                    form.reset();
-                    // Restablecer la fecha y hora después de enviar
-                    const ahora = new Date();
-                    const offset = ahora.getTimezoneOffset();
-                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
-                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                })
-                .catch(error => {
+                    // Opcional: Reiniciar el formulario si se define en las opciones
+                    if (options.resetFormOnSuccess) {
+                        form.reset(); 
+                        // Lógica para reestablecer campos específicos como fechas/horas
+                        if (options.postResetCallback) {
+                            options.postResetCallback();
+                        }
+                    }
+
+                } catch (error) {
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
-                })
-                .finally(() => {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Guardar y Enviar a WhatsApp';
-                });
+                } finally {
+                    // Si hubo un error, re-habilitar y mostrar el botón de guardar
+                    if (statusMessage.className.includes('error')) {
+                         submitButton.disabled = false;
+                         submitButton.textContent = options.originalSubmitText || 'Guardar'; // Texto original
+                         submitButton.style.display = 'block'; // Asegurarse de que esté visible
+                    }
+                }
             });
+        }
+
+        // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
+
+        // Función para construir el mensaje de WhatsApp para el formulario de Reporte
+        const buildReporteMessage = (data) => {
+            return `*Reporte De instalación:*\n\n` +
+                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
+                `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
+                `*Equipo:* ${data.equipo || 'N/A'}\n` +
+                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
+                `*SI Asignado:* ${data.si_asignado || 'N/A'}\n` +
+                `*PW Asignado:* ${data.pw_asignado || 'N/A'}\n` +
+                `*Precinto:* ${data.precinto || 'N/A'}\n` +
+                `*ONU PON:* ${data.onu_pon || 'N/A'}\n` +
+                `*Router:* ${data.router || 'N/A'}\n` +
+                `*MAC:* ${data.mac || 'N/A'}\n` +
+                `*Instalación:* ${data.estado_instalacion || 'N/A'}\n` +
+                `*PLAN:* ${data.plan_contratado || 'N/A'}\n` +
+                `*V. descarga:* ${data.velocidad_descarga_mbps || 'N/A'}\n` +
+                `*V. Subida:* ${data.velocidad_subida_mbps || 'N/A'}\n` +
+                `*Potencia NAP:* ${data.potencia_nap || 'N/A'}\n` +
+                `*Potencia Cliente:* ${data.potencia_cliente || 'N/A'}\n` +
+                `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
+                `*Metraje desechado:* ${data.metraje_desechado_m || 'N/A'}\n` +
+                `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n` +
+                `*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
+        };
+
+        // Lógica de acceso por contraseña
+        const passwordForm = document.getElementById('password-form');
+        const passwordContainer = document.getElementById('password-container');
+        const formContainer = document.getElementById('form-container');
+
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (e.target.querySelector('input').value === '0000') {
+                passwordContainer.style.display = 'none';
+                formContainer.style.display = 'block';
+
+                // Inicializar fecha y hora aquí una vez que se accede al formulario
+                const fechaInput = document.getElementById('fecha_reporte');
+                const horaInput = document.getElementById('hora_reporte');
+                const ahora = new Date();
+                const offset = ahora.getTimezoneOffset();
+                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                
+                fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+
+                // Configura la integración de WhatsApp para 'reporteForm' una vez que sea visible
+                setupWhatsAppIntegration(
+                    'reporteForm',
+                    '/api/reportes/instalacion',
+                    buildReporteMessage,
+                    {
+                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
+                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                            const ahora = new Date();
+                            const offset = ahora.getTimezoneOffset();
+                            const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                            document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                            document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                        },
+                        originalSubmitText: 'Guardar Reporte'
+                    }
+                );
+
+            } else {
+                alert('Clave incorrecta.');
+            }
         });
+        
+        // Lógica específica para el campo precinto
+        document.getElementById('precinto').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+    });
     </script>
 </body>
 </html>
