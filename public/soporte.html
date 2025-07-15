@@ -6,10 +6,12 @@
     <title>Reporte de Soporte</title>
     <link rel="stylesheet" href="minimal-style.css">
     <style>
+        /* Estilos generales para alineación y espaciado */
         .geo-wrapper { display: flex; align-items: center; gap: 0.5rem; }
         .geo-wrapper input { flex-grow: 1; }
         .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
-        /* Estilos para el enlace de WhatsApp, si no están en minimal-style.css */
+
+        /* Estilos para el enlace de WhatsApp */
         .whatsapp-link-container {
             margin-top: 1rem;
             text-align: center;
@@ -27,8 +29,28 @@
         .whatsapp-link-container a:hover {
             background-color: #1DA851;
         }
-        /* Estilo para ocultar el campo */
+
+        /* Estilo para ocultar el campo de la foto inicialmente */
         .hidden-field { display: none; }
+
+        /* Estilos para mensajes de estado (success/error) */
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
@@ -106,15 +128,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
-        // --- CONFIGURACIÓN DE SUPABASE (AJUSTA CON TUS PROPIAS CLAVES) ---
-        const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; // Ejemplo: 'https://xyzcompany.supabase.co'
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY'; // Ejemplo: 'eyJhbGciOiJIUzI... '
-        
-        // Ahora sí, Supabase está definido y podemos crear la instancia
-        const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
         // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
-        // (Esta función debe estar definida UNA SOLA VEZ en tu proyecto, preferiblemente en un archivo JS separado)
+        // (Esta función debe estar definida UNA SOLA VEZ en tu proyecto, preferiblemente en un archivo JS separado
+        // que se cargue después del SDK de Supabase)
         async function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) {
@@ -157,6 +173,7 @@
                     statusMessage.className = 'status-message'; // Quita el color verde/rojo mientras sube la imagen
 
                     try {
+                        // 'supabase' DEBE ESTAR DISPONIBLE AQUÍ
                         const { data, error } = await supabase.storage
                             .from(bucketName)
                             .upload(fileName, file, {
@@ -230,149 +247,159 @@
             });
         }
 
-        // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
+        // --- CÓDIGO QUE SE EJECUTA CUANDO EL DOM ESTÁ CARGADO ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURACIÓN DE SUPABASE (AHORA SÍ, DENTRO DE DOMContentLoaded) ---
+            // Asegúrate de que estas son tus credenciales REALES
+            const SUPABASE_URL = 'https://rroepcoumoyoflxgomef.supabase.co'; 
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyb2VwY291bW95b2ZseGdvbWVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI1MTU3MzIsImV4cCI6MjA2ODA5MTczMn0.WCtPwRF0XaQytAVPxBAQcYbpHMM70vgFkgTl3ojdNkY';
+            
+            // Supabase ya está definido gracias al script CDN anterior
+            const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // --------------------------------------------------------
 
-        // Función para construir el mensaje de WhatsApp para el formulario de Soporte
-        // Ahora acepta un segundo parámetro 'imageUrl'
-        const buildSoporteMessage = (data, imageUrl = '') => {
-            const coordsLink = data.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordenadas)}\n` : '';
-            const fotoLink = imageUrl ? `*Foto Test Velocidad:* ${imageUrl}\n` : ''; // Añade la URL de la imagen si existe
+            // Función para construir el mensaje de WhatsApp para el formulario de Soporte
+            // Ahora acepta un segundo parámetro 'imageUrl'
+            const buildSoporteMessage = (data, imageUrl = '') => {
+                const coordsLink = data.coordenadas ? `*Coordenadas:* https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.coordenadas)}\n` : '';
+                const fotoLink = imageUrl ? `*Foto Test Velocidad:* ${imageUrl}\n` : ''; // Añade la URL de la imagen si existe
 
-            return `*Reporte Técnico de Soporte:*\n\n` +
-                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
-                `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
-                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
-                `*Precinto:* ${data.precinto || 'N/A'}\n` +
-                `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
-                coordsLink +
-                `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
-                `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
-                `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
-                `*Zona:* ${data.zona || 'N/A'}\n` +
-                `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
-                fotoLink + // Aquí se incluye el enlace a la foto
-                `*Causa:* ${data.causa_problema || 'N/A'}\n` +
-                `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
-                `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
-                `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
-                `*Observaciones Adicionales:* ${data.observaciones || 'N/A'}\n` +
-                `*Realizado por:* ${data.realizado_por_tecnico || 'N/A'}`;
-        };
+                return `*Reporte Técnico de Soporte:*\n\n` +
+                    `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
+                    `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
+                    `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
+                    `*Precinto:* ${data.precinto || 'N/A'}\n` +
+                    `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
+                    coordsLink +
+                    `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
+                    `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
+                    `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
+                    `*Zona:* ${data.zona || 'N/A'}\n` +
+                    `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
+                    fotoLink + // Aquí se incluye el enlace a la foto
+                    `*Causa:* ${data.causa_problema || 'N/A'}\n` +
+                    `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
+                    `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
+                    `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
+                    `*Observaciones Adicionales:* ${data.observaciones || 'N/A'}\n` +
+                    `*Realizado por:* ${data.realizado_por_tecnico || 'N/A'}`;
+            };
 
-        // Lógica de acceso por contraseña
-        const passwordForm = document.getElementById('password-form');
-        passwordForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (e.target.querySelector('input').value === '1111') {
-                document.getElementById('password-container').style.display = 'none';
-                document.getElementById('form-container').style.display = 'block';
+            // Lógica de acceso por contraseña
+            const passwordForm = document.getElementById('password-form');
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (e.target.querySelector('input').value === '1111') {
+                    document.getElementById('password-container').style.display = 'none';
+                    document.getElementById('form-container').style.display = 'block';
 
-                // Inicializar fecha y hora aquí una vez que se accede al formulario
-                const fechaInput = document.getElementById('fecha_reporte');
-                const horaInput = document.getElementById('hora_reporte');
-                const ahora = new Date();
-                const offset = ahora.getTimezoneOffset();
-                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                
-                fechaInput.value = ahoraLocal.toISOString().split('T')[0];
-                horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                    // Inicializar fecha y hora aquí una vez que se accede al formulario
+                    const fechaInput = document.getElementById('fecha_reporte');
+                    const horaInput = document.getElementById('hora_reporte');
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset();
+                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                    
+                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
 
-                // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
-                setupWhatsAppIntegration(
-                    'soporteForm', // ID del formulario
-                    '/api/reportes/soporte', // Endpoint de la API para este formulario
-                    buildSoporteMessage, // Función para construir el mensaje de WhatsApp
-                    {
-                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
-                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
-                            const ahora = new Date();
-                            const offset = ahora.getTimezoneOffset();
-                            const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                            document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
-                            document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                        },
-                        originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
+                    // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
+                    setupWhatsAppIntegration(
+                        'soporteForm', // ID del formulario
+                        '/api/reportes/soporte', // Endpoint de la API para este formulario
+                        buildSoporteMessage, // Función para construir el mensaje de WhatsApp
+                        {
+                            resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
+                            postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                                const ahora = new Date();
+                                const offset = ahora.getTimezoneOffset();
+                                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                                document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                                document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                            },
+                            originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
+                        }
+                    );
+
+                } else {
+                    alert('Clave incorrecta.');
+                }
+            });
+            
+            // Lógica específica para el campo precinto
+            document.getElementById('precinto').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+
+            // Lógica para obtener coordenadas
+            document.getElementById('geo-btn').addEventListener('click', () => {
+                const geoBtn = document.getElementById('geo-btn');
+                const coordsInput = document.getElementById('coordenadas');
+                if (!navigator.geolocation) {
+                    coordsInput.value = 'Geolocalización no soportada.';
+                    return;
+                }
+                geoBtn.textContent = '...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                        geoBtn.textContent = '📍';
+                    },
+                    () => {
+                        coordsInput.value = 'No se pudo obtener la ubicación.';
+                        geoBtn.textContent = '📍';
                     }
                 );
+            });
 
-            } else {
-                alert('Clave incorrecta.');
-            }
-        });
-        
-        // Lógica específica para el campo precinto
-        document.getElementById('precinto').addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
+            // Lógica para puertos de cliente dinámicos
+            const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
+            const puertoClienteSelect = document.getElementById('puerto_cliente');
 
-        // Lógica para obtener coordenadas
-        document.getElementById('geo-btn').addEventListener('click', () => {
-            const geoBtn = document.getElementById('geo-btn');
-            const coordsInput = document.getElementById('coordenadas');
-            if (!navigator.geolocation) {
-                coordsInput.value = 'Geolocalización no soportada.';
-                return;
-            }
-            geoBtn.textContent = '...';
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
-                    geoBtn.textContent = '📍';
-                },
-                () => {
-                    coordsInput.value = 'No se pudo obtener la ubicación.';
-                    geoBtn.textContent = '📍';
+            cantidadPuertosSelect.addEventListener('change', function() {
+                const cantidad = parseInt(this.value, 10);
+                puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
+                puertoClienteSelect.disabled = false;
+
+                if (cantidad) {
+                    puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
+                    for (let i = 1; i <= cantidad; i++) {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = `Puerto ${i}`;
+                        puertoClienteSelect.appendChild(option);
+                    }
+                } else {
+                    puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
+                    puertoClienteSelect.disabled = true;
                 }
-            );
-        });
+            });
 
-        // Lógica para puertos de cliente dinámicos
-        const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
-        const puertoClienteSelect = document.getElementById('puerto_cliente');
+            // --- Lógica para mostrar/ocultar campo de foto ---
+            const estatusVisitaSelect = document.getElementById('estatus_visita');
+            const campoFotoTest = document.getElementById('campo_foto_test'); // El div que contiene el input de la foto
+            const fotoTestInput = document.getElementById('foto_test_velocidad'); // El input file
 
-        cantidadPuertosSelect.addEventListener('change', function() {
-            const cantidad = parseInt(this.value, 10);
-            puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
-            puertoClienteSelect.disabled = false;
-
-            if (cantidad) {
-                puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
-                for (let i = 1; i <= cantidad; i++) {
-                    const option = document.createElement('option');
-                    option.value = i;
-                    option.textContent = `Puerto ${i}`;
-                    puertoClienteSelect.appendChild(option);
+            estatusVisitaSelect.addEventListener('change', function() {
+                if (this.value === 'Realizado') {
+                    campoFotoTest.style.display = 'block';
+                    fotoTestInput.required = true; // Hacerlo requerido si es "Realizado"
+                } else {
+                    campoFotoTest.style.display = 'none';
+                    fotoTestInput.required = false; // Quitar el requerido
+                    fotoTestInput.value = ''; // Limpiar el campo de archivo
                 }
-            } else {
-                puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
-                puertoClienteSelect.disabled = true;
-            }
-        });
-
-        // --- Lógica para mostrar/ocultar campo de foto ---
-        const estatusVisitaSelect = document.getElementById('estatus_visita');
-        const campoFotoTest = document.getElementById('campo_foto_test'); // El div que contiene el input de la foto
-        const fotoTestInput = document.getElementById('foto_test_velocidad'); // El input file
-
-        estatusVisitaSelect.addEventListener('change', function() {
-            if (this.value === 'Realizado') {
+            });
+            // Inicializar el estado al cargar la página (por si la opción "Realizado" es la predeterminada)
+            if (estatusVisitaSelect.value === 'Realizado') {
                 campoFotoTest.style.display = 'block';
-                fotoTestInput.required = true; // Hacerlo requerido si es "Realizado"
+                fotoTestInput.required = true;
             } else {
                 campoFotoTest.style.display = 'none';
-                fotoTestInput.required = false; // Quitar el requerido
-                fotoTestInput.value = ''; // Limpiar el campo de archivo
+                fotoTestInput.required = false;
             }
-        });
-        // Inicializar el estado al cargar la página (por si la opción "Realizado" es la predeterminada)
-        if (estatusVisitaSelect.value === 'Realizado') {
-            campoFotoTest.style.display = 'block';
-            fotoTestInput.required = true;
-        } else {
-            campoFotoTest.style.display = 'none';
-            fotoTestInput.required = false;
-        }
 
+        }); // Cierre de DOMContentLoaded
     </script>
 </body>
 </html>
