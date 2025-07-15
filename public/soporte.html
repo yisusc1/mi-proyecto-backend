@@ -9,6 +9,24 @@
         .geo-wrapper { display: flex; align-items: center; gap: 0.5rem; }
         .geo-wrapper input { flex-grow: 1; }
         .geo-btn { padding: 0.8rem; line-height: 1; font-size: 1.2rem; width: auto; }
+        /* Estilos para el enlace de WhatsApp, si no están en minimal-style.css */
+        .whatsapp-link-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .whatsapp-link-container a {
+            display: inline-block;
+            background-color: #25D366; /* Color de WhatsApp */
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+        .whatsapp-link-container a:hover {
+            background-color: #1DA851;
+        }
     </style>
 </head>
 <body>
@@ -70,142 +88,233 @@
             <div class="form-group"><label for="observaciones">Observaciones Adicionales</label><textarea id="observaciones" name="observaciones" rows="3"></textarea></div>
             <div class="form-group"><label for="realizado_por_tecnico">Realizado por</label><input type="text" id="realizado_por_tecnico" name="realizado_por_tecnico" required></div>
             
-            <div id="status-message" class="status-message"></div>
-            <button type="submit" class="btn-primary">Guardar y Enviar a WhatsApp</button>
-        </form>
+            <div id="soporteForm-status-message" class="status-message"></div>
+            <div id="soporteForm-whatsapp-container" class="whatsapp-link-container" style="display: none;">
+                <p>El reporte ha sido guardado. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p>
+                <a id="soporteForm-whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a>
+            </div>
+            <button type="submit" class="btn-primary" id="soporteForm-btn">Guardar Reporte</button>
+            </form>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const passwordForm = document.getElementById('password-form');
-            passwordForm.addEventListener('submit', function(e) {
+        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP ---
+        // Se asume que esta función (setupWhatsAppIntegration) ya está en un archivo JS común
+        // o que la copiarás una sola vez en tu HTML si es tu único archivo.
+        // Si ya la tienes en reporte.html o solicitud.html, asegúrate de que no esté duplicada.
+        function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
+            const form = document.getElementById(formId);
+            if (!form) {
+                console.error(`Formulario con ID '${formId}' no encontrado.`);
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            const statusMessage = form.querySelector(`#${formId}-status-message`); // Busca por ID específico
+            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`); // Busca por ID específico
+            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`); // Busca por ID específico
+
+            // Validar que todos los elementos necesarios existan
+            if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) {
+                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs como '${formId}-status-message', '${formId}-whatsapp-container', '${formId}-whatsapp-link' y el ID del botón de submit estén correctos.`);
+                return;
+            }
+
+            form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (e.target.querySelector('input').value === '1111') {
-                    document.getElementById('password-container').style.display = 'none';
-                    document.getElementById('form-container').style.display = 'block';
-
-                    const fechaInput = document.getElementById('fecha_reporte');
-                    const horaInput = document.getElementById('hora_reporte');
-                    const ahora = new Date();
-                    const offset = ahora.getTimezoneOffset();
-                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                    fechaInput.value = ahoraLocal.toISOString().split('T')[0];
-                    horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                } else {
-                    alert('Clave incorrecta.');
-                }
-            });
-
-            document.getElementById('precinto').addEventListener('input', (e) => {
-                e.target.value = e.target.value.replace(/\D/g, '');
-            });
-
-            document.getElementById('geo-btn').addEventListener('click', () => {
-                const geoBtn = document.getElementById('geo-btn');
-                const coordsInput = document.getElementById('coordenadas');
-                if (!navigator.geolocation) {
-                    coordsInput.value = 'Geolocalización no soportada.';
-                    return;
-                }
-                geoBtn.textContent = '...';
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
-                        geoBtn.textContent = '📍';
-                    },
-                    () => {
-                        coordsInput.value = 'No se pudo obtener la ubicación.';
-                        geoBtn.textContent = '📍';
-                    }
-                );
-            });
-
-            // --- LÓGICA PARA PUERTOS DE CLIENTE DINÁMICOS ---
-            const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
-            const puertoClienteSelect = document.getElementById('puerto_cliente');
-
-            cantidadPuertosSelect.addEventListener('change', function() {
-                const cantidad = parseInt(this.value, 10);
-                puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
-                puertoClienteSelect.disabled = false;
-
-                if (cantidad) {
-                    puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
-                    for (let i = 1; i <= cantidad; i++) {
-                        const option = document.createElement('option');
-                        option.value = i;
-                        option.textContent = `Puerto ${i}`;
-                        puertoClienteSelect.appendChild(option);
-                    }
-                } else {
-                    puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
-                    puertoClienteSelect.disabled = true;
-                }
-            });
-
-
-            const form = document.getElementById('soporteForm');
-            form.addEventListener('submit', e => {
-                e.preventDefault();
-                const submitButton = form.querySelector('button[type="submit"]');
-                const statusMessage = document.getElementById('status-message');
+                
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
+                statusMessage.className = 'status-message'; // Reinicia la clase
+                statusMessage.textContent = ''; // Limpia el mensaje
+                whatsappLinkContainer.style.display = 'none'; // Oculta el enlace de WhatsApp
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
 
-                fetch('/api/reportes/soporte', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataObject)
-                })
-                .then(response => {
-                    if (!response.ok) throw new Error('Error del servidor');
-                    return response.json();
-                })
-                .then(data => {
-                    statusMessage.className = 'status-message success';
-                    statusMessage.textContent = '¡Reporte guardado! Abriendo WhatsApp...';
-                    
-                    let message = `*Reporte Técnico de Soporte:*\n\n` +
-                        `*Fecha:* ${dataObject.fecha_reporte}\n` +
-                        `*Hora:* ${dataObject.hora_reporte}\n` +
-                        `*Cliente:* ${dataObject.nombre_cliente || 'N/A'}\n` +
-                        `*Precinto:* ${dataObject.precinto || 'N/A'}\n` +
-                        `*Caja Nap:* ${dataObject.caja_nap || 'N/A'}\n` +
-                        (dataObject.coordenadas ? `*Coordenadas:* https://www.google.com/maps?q=${dataObject.coordenadas}\n` : '') +
-                        `*Cantidad de Puertos:* ${dataObject.cantidad_puertos_nap || 'N/A'}\n` +
-                        `*Puerto cliente:* ${dataObject.puerto_cliente || 'N/A'}\n` +
-                        `*Potencia:* ${dataObject.potencia_dbm || 'N/A'}\n` +
-                        `*Zona:* ${dataObject.zona || 'N/A'}\n` +
-                        `*Estatus:* ${dataObject.estatus_visita || 'N/A'}\n` +
-                        `*Causa:* ${dataObject.causa_problema || 'N/A'}\n` +
-                        `*Acción Realizada:* ${dataObject.accion_realizada || 'N/A'}\n` +
-                        `*Conectores utilizados:* ${dataObject.conectores_utilizados || 'N/A'}\n` +
-                        `*Metraje utilizado:* ${dataObject.metraje_utilizado_m || 'N/A'}\n` +
-                        `*Observaciones Adicionales:* ${dataObject.observaciones || 'N/A'}\n` +
-                        `*Realizado por:* ${dataObject.realizado_por_tecnico || 'N/A'}`;
+                // --- Lógica de pre-procesamiento de datos específica del formulario (si aplica) ---
+                // Si la lógica de cédula/asesor/fuente SOLO aplica a 'solicitudForm', quítala de aquí.
+                // Si hay lógica común a varios formularios, déjala aquí.
+                if (dataObject.cedula_nacionalidad && dataObject.cedula_numero) {
+                    dataObject.cedula = `${dataObject.cedula_nacionalidad}-${dataObject.cedula_numero}`;
+                    delete dataObject.cedula_nacionalidad;
+                    delete dataObject.cedula_numero;
+                }
+                if (dataObject.asesor === 'Otro' && dataObject.otro_asesor) {
+                    dataObject.asesor = dataObject.otro_asesor;
+                    delete dataObject.otro_asesor;
+                }
+                if (dataObject.fuente_conocimiento === 'Otro' && dataObject.otra_fuente) {
+                    dataObject.fuente_conocimiento = dataObject.otra_fuente;
+                    delete dataObject.otra_fuente;
+                }
+                // --- FIN Lógica de pre-procesamiento (ajusta según tus necesidades) ---
 
-                    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                try {
+                    const response = await fetch(apiEndpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dataObject)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
+                        throw new Error(errorData.message || 'Error del servidor al guardar');
+                    }
+
+                    statusMessage.className = 'status-message success';
+                    statusMessage.textContent = '¡Información guardada con éxito!';
                     
-                    form.reset();
-                    const ahora = new Date();
-                    const offset = ahora.getTimezoneOffset();
-                    const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
-                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
-                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                })
-                .catch(error => {
+                    // Ocultar el botón de guardar
+                    submitButton.style.display = 'none';
+
+                    // Construir el mensaje de WhatsApp usando la función proporcionada
+                    const whatsappMessage = messageBuilder(dataObject);
+                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
+                    
+                    whatsappLink.href = whatsappUrl;
+                    whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
+
+                    // Opcional: Reiniciar el formulario si se define en las opciones
+                    if (options.resetFormOnSuccess) {
+                        form.reset(); 
+                        // Lógica para reestablecer campos específicos como fechas/horas
+                        if (options.postResetCallback) {
+                            options.postResetCallback();
+                        }
+                    }
+
+                } catch (error) {
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
-                })
-                .finally(() => {
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Guardar y Enviar a WhatsApp';
-                });
+                } finally {
+                    // Si hubo un error, re-habilitar y mostrar el botón de guardar
+                    if (statusMessage.className.includes('error')) {
+                         submitButton.disabled = false;
+                         submitButton.textContent = options.originalSubmitText || 'Guardar'; // Texto original
+                         submitButton.style.display = 'block'; // Asegurarse de que esté visible
+                    }
+                }
             });
+        }
+
+        // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
+
+        // Función para construir el mensaje de WhatsApp para el formulario de Soporte
+        const buildSoporteMessage = (data) => {
+            // Corrección de la URL de coordenadas en el mensaje de WhatsApp
+            const coordsLink = data.coordenadas ? `*Coordenadas:* https://maps.google.com/?q=${encodeURIComponent(data.coordenadas)}\n` : '';
+
+            return `*Reporte Técnico de Soporte:*\n\n` +
+                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
+                `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
+                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
+                `*Precinto:* ${data.precinto || 'N/A'}\n` +
+                `*Caja Nap:* ${data.caja_nap || 'N/A'}\n` +
+                coordsLink + // Usa la variable con el enlace corregido
+                `*Cantidad de Puertos:* ${data.cantidad_puertos_nap || 'N/A'}\n` +
+                `*Puerto cliente:* ${data.puerto_cliente || 'N/A'}\n` +
+                `*Potencia:* ${data.potencia_dbm || 'N/A'}\n` +
+                `*Zona:* ${data.zona || 'N/A'}\n` +
+                `*Estatus:* ${data.estatus_visita || 'N/A'}\n` +
+                `*Causa:* ${data.causa_problema || 'N/A'}\n` +
+                `*Acción Realizada:* ${data.accion_realizada || 'N/A'}\n` +
+                `*Conectores utilizados:* ${data.conectores_utilizados || 'N/A'}\n` +
+                `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
+                `*Observaciones Adicionales:* ${data.observaciones || 'N/A'}\n` +
+                `*Realizado por:* ${data.realizado_por_tecnico || 'N/A'}`;
+        };
+
+        // Lógica de acceso por contraseña
+        const passwordForm = document.getElementById('password-form');
+        passwordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (e.target.querySelector('input').value === '1111') {
+                document.getElementById('password-container').style.display = 'none';
+                document.getElementById('form-container').style.display = 'block';
+
+                // Inicializar fecha y hora aquí una vez que se accede al formulario
+                const fechaInput = document.getElementById('fecha_reporte');
+                const horaInput = document.getElementById('hora_reporte');
+                const ahora = new Date();
+                const offset = ahora.getTimezoneOffset();
+                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                
+                fechaInput.value = ahoraLocal.toISOString().split('T')[0];
+                horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+
+                // Configura la integración de WhatsApp para 'soporteForm' una vez que sea visible
+                setupWhatsAppIntegration(
+                    'soporteForm', // ID del formulario
+                    '/api/reportes/soporte', // Endpoint de la API para este formulario
+                    buildSoporteMessage, // Función para construir el mensaje de WhatsApp
+                    {
+                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
+                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                            const ahora = new Date();
+                            const offset = ahora.getTimezoneOffset();
+                            const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                            document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                            document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                        },
+                        originalSubmitText: 'Guardar Reporte' // Texto original del botón de submit
+                    }
+                );
+
+            } else {
+                alert('Clave incorrecta.');
+            }
         });
+        
+        // Lógica específica para el campo precinto
+        document.getElementById('precinto').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
+
+        // Lógica para obtener coordenadas
+        document.getElementById('geo-btn').addEventListener('click', () => {
+            const geoBtn = document.getElementById('geo-btn');
+            const coordsInput = document.getElementById('coordenadas');
+            if (!navigator.geolocation) {
+                coordsInput.value = 'Geolocalización no soportada.';
+                return;
+            }
+            geoBtn.textContent = '...';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    coordsInput.value = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`;
+                    geoBtn.textContent = '📍';
+                },
+                () => {
+                    coordsInput.value = 'No se pudo obtener la ubicación.';
+                    geoBtn.textContent = '📍';
+                }
+            );
+        });
+
+        // Lógica para puertos de cliente dinámicos
+        const cantidadPuertosSelect = document.getElementById('cantidad_puertos_nap');
+        const puertoClienteSelect = document.getElementById('puerto_cliente');
+
+        cantidadPuertosSelect.addEventListener('change', function() {
+            const cantidad = parseInt(this.value, 10);
+            puertoClienteSelect.innerHTML = ''; // Limpiar opciones anteriores
+            puertoClienteSelect.disabled = false;
+
+            if (cantidad) {
+                puertoClienteSelect.innerHTML = '<option value="" disabled selected>Seleccione un puerto</option>';
+                for (let i = 1; i <= cantidad; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = `Puerto ${i}`;
+                    puertoClienteSelect.appendChild(option);
+                }
+            } else {
+                puertoClienteSelect.innerHTML = '<option value="">Seleccione primero la cantidad de puertos</option>';
+                puertoClienteSelect.disabled = true;
+            }
+        });
+
     </script>
 </body>
 </html>
