@@ -3,7 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
-const { randomInt } = require('crypto'); // <<< AÑADIDO PARA LA CLAVE
+const { randomInt } = require('crypto');
 
 // Crear la aplicación del servidor
 const app = express();
@@ -17,21 +17,17 @@ app.use(express.static('public')); // Para servir los archivos HTML
 // Conectar a la base de datos de Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
-// <<< NUEVA LÓGICA PARA LA CLAVE TEMPORAL >>>
-// =================================================================
+// --- LÓGICA PARA LA CLAVE TEMPORAL ---
 let temporaryKey = generateTemporaryKey();
 let keyGenerationTime = Date.now();
 const KEY_VALIDITY_DURATION = 12 * 60 * 60 * 1000; // 12 horas en milisegundos
 
-// Función que crea un número aleatorio de 4 dígitos
 function generateTemporaryKey() {
     return String(randomInt(1000, 9999)).padStart(4, '0');
 }
-// =================================================================
-
 
 // ----------------------------------------------------------------
-// --- ENDPOINTS BÁSICOS Y DE FORMULARIOS -------------------------
+// --- ENDPOINTS DE LA APLICACIÓN ---------------------------------
 // ----------------------------------------------------------------
 
 // Endpoint de prueba
@@ -46,7 +42,7 @@ app.get('/api/tecnicos', async (req, res) => {
   res.json(data);
 });
 
-// Endpoint para recibir y guardar una nueva solicitud de servicio
+// Endpoint para crear una nueva solicitud de servicio
 app.post('/api/solicitudes', async (req, res) => {
   const solicitud = req.body;
   solicitud.estado_solicitud = 'Pendiente';
@@ -74,96 +70,62 @@ app.get('/api/solicitudes/pendientes', async (req, res) => {
     }
 });
 
-// <<< ENDPOINT MODIFICADO >>>
-// Endpoint para recibir un reporte de instalación Y actualizar la solicitud.
+// Endpoint para procesar un reporte de instalación (normal o rápido)
 app.post('/api/reportes/instalacion', async (req, res) => {
     const reporteData = req.body;
     const solicitudId = reporteData.id_solicitud;
 
-    // --- Lógica para Instalaciones Rápidas (FP-X) ---
+    // Lógica para Instalaciones Rápidas (FP-X)
     if (solicitudId === 'FP-AUTO') {
-        // 1. Buscar el último ID de tipo FP-
-        const { data: reportesAnteriores, error: busquedaError } = await supabase
-            .from('reportes_instalacion')
-            .select('id_solicitud')
-            .like('id_solicitud', 'FP-%')
-            .order('created_at', { ascending: false }) // Ordenamos para encontrar el más reciente
-            .limit(1);
+        try {
+            const { data: reportesAnteriores, error: busquedaError } = await supabase
+                .from('reportes_instalacion')
+                .select('id_solicitud')
+                .like('id_solicitud', 'FP-%')
+                .order('created_at', { ascending: false })
+                .limit(1);
 
-        if (busquedaError) {
-            console.error('Error buscando último ID FP:', busquedaError);
-            return res.status(500).json({ message: 'Error al generar ID de reporte.' });
+            if (busquedaError) throw busquedaError;
+
+            let nuevoNumero = 1;
+            if (reportesAnteriores && reportesAnteriores.length > 0) {
+                const ultimoNumero = parseInt(reportesAnteriores[0].id_solicitud.split('-')[1]);
+                nuevoNumero = ultimoNumero + 1;
+            }
+            
+            reporteData.id_solicitud = `FP-${nuevoNumero}`;
+
+            const { data, error } = await supabase.from('reportes_instalacion').insert([reporteData]).select();
+            if (error) throw error;
+            
+            return res.status(201).json({ message: 'Reporte de instalación rápida guardado!', data });
+
+        } catch (error) {
+            console.error('Error procesando reporte rápido:', error);
+            return res.status(500).json({ message: 'Error al procesar reporte rápido.' });
         }
-
-        let nuevoNumero = 1;
-        if (reportesAnteriores && reportesAnteriores.length > 0) {
-            const ultimoId = reportesAnteriores[0].id_solicitud;
-            const ultimoNumero = parseInt(ultimoId.split('-')[1]);
-            nuevoNumero = ultimoNumero + 1;
-        }
-        
-        // 2. Asignar el nuevo ID
-        reporteData.id_solicitud = `FP-${nuevoNumero}`;
-
-        // 3. Guardar el reporte rápido
-        const { data, error } = await supabase
-            .from('reportes_instalacion')
-            .insert([reporteData])
-            .select();
-
-        if (error) {
-            console.error('Error guardando el reporte rápido:', error);
-            return res.status(500).json({ message: error.message });
-        }
-        return res.status(201).json({ message: 'Reporte de instalación rápida guardado!', data });
     }
 
-    // --- Lógica para Solicitudes Normales (con ID numérico) ---
+    // Lógica para Solicitudes Normales (con ID numérico)
     if (solicitudId && !isNaN(parseInt(solicitudId))) {
-        const { data: reporteGuardado, error: errorReporte } = await supabase
-            .from('reportes_instalacion')
-            .insert([reporteData])
-            .select();
+        const { data: reporteGuardado, error: errorReporte } = await supabase.from('reportes_instalacion').insert([reporteData]).select();
 
         if (errorReporte) {
             console.error('Error guardando el reporte:', errorReporte);
             return res.status(500).json({ message: errorReporte.message });
         }
 
-        const { error: errorActualizacion } = await supabase
-            .from('solicitudes')
-            .update({ estado_solicitud: 'Exitosa' })
-            .eq('id', solicitudId);
+        const { error: errorActualizacion } = await supabase.from('solicitudes').update({ estado_solicitud: 'Exitosa' }).eq('id', solicitudId);
 
         if (errorActualizacion) {
             console.error('Error actualizando estado:', errorActualizacion);
-            return res.status(201).json({ 
-                message: 'Reporte guardado, pero hubo un error al actualizar el estado.',
-                data: reporteGuardado
-            });
+            return res.status(201).json({ message: 'Reporte guardado, pero hubo un error al actualizar el estado.', data: reporteGuardado });
         }
         return res.status(201).json({ message: 'Reporte guardado y solicitud actualizada!', data: reporteGuardado });
     }
     
-    // Si el ID no es ni numérico ni FP-AUTO, es un error.
+    // Si el ID no es válido
     return res.status(400).json({ message: 'ID de solicitud no válido.' });
-});
-        }
-        res.status(201).json({ message: 'Reporte guardado y solicitud actualizada con éxito!', data: reporteGuardado });
-
-    } else {
-        // Es una instalación rápida, solo guardar el reporte
-        const { data, error } = await supabase
-            .from('reportes_instalacion')
-            .insert([reporteData])
-            .select();
-
-        if (error) {
-            console.error('Error guardando el reporte rápido:', error);
-            return res.status(500).json({ message: error.message });
-        }
-        res.status(201).json({ message: 'Reporte de instalación rápida guardado con éxito!', data });
-    }
 });
 
 // Endpoint para recibir un reporte de soporte
@@ -177,8 +139,7 @@ app.post('/api/reportes/soporte', async (req, res) => {
     res.status(201).json({ message: 'Reporte de soporte guardado', data: data });
 });
 
-// <<< NUEVOS ENDPOINTS PARA LA CLAVE TEMPORAL >>>
-// =================================================================
+// Endpoints para la clave temporal
 app.get('/api/temporary-key', (req, res) => {
     const currentTime = Date.now();
     if (currentTime - keyGenerationTime > KEY_VALIDITY_DURATION) {
@@ -197,14 +158,12 @@ app.post('/api/validate-temporary-key', (req, res) => {
         res.status(401).json({ valid: false, message: 'Clave incorrecta.' });
     }
 });
-// =================================================================
 
 
 // ----------------------------------------------------------------
-// --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR (PLANIFICACIÓN) ---
+// --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR -------------------
 // ----------------------------------------------------------------
 
-// Endpoint para obtener los datos iniciales del tablero Kanban para una fecha específica
 app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, pendientesRes, planificadasRes] = await Promise.all([
@@ -213,7 +172,6 @@ app.get('/api/planificacion/:date', async (req, res) => {
         supabase.from('planificaciones').select('*').eq('fecha_asignada', date)
     ]);
     if (tecnicosRes.error || pendientesRes.error || planificadasRes.error) {
-        console.error('Error al cargar datos del panel:', tecnicosRes.error || pendientesRes.error || planificadasRes.error);
         return res.status(500).json({ message: "Error al cargar datos del panel" });
     }
     res.json({
@@ -223,54 +181,30 @@ app.get('/api/planificacion/:date', async (req, res) => {
     });
 });
 
-// Endpoint para asignar una tarea a un equipo
 app.post('/api/planificacion/assign', async (req, res) => {
     const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector } = req.body;
-
-    const { error: updateError } = await supabase
-        .from('solicitudes')
-        .update({ 
-            estado_solicitud: 'Asignada',
-            equipo: equipo,
-            tecnico_1: tecnico1,
-            tecnico_2: tecnico2
-        })
-        .eq('id', solicitud_id);
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Asignada', equipo: equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
     if (updateError) {
-        console.error("<<<<< ¡ERROR EN EL SERVIDOR! al actualizar la solicitud >>>>>", updateError);
         return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     }
-    
-    const { error: insertError } = await supabase
-        .from('planificaciones')
-        .insert({ solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector, estado_asignacion: 'Asignada' });
+    const { error: insertError } = await supabase.from('planificaciones').insert({ solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector, estado_asignacion: 'Asignada' });
     if (insertError) {
-        console.error("<<<<< ¡ERROR EN EL SERVIDOR! al crear la planificación >>>>>", insertError);
         return res.status(400).json({ error: `Error al crear planificación: ${insertError.message}` });
     }
     res.json({ result: 'success', message: 'Tarea asignada con éxito.' });
 });
 
-// Endpoint para des-asignar una tarea
 app.post('/api/planificacion/unassign', async (req, res) => {
     const { solicitud_id } = req.body;
     if (!solicitud_id) {
         return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
     }
-    const { error: deleteError } = await supabase
-        .from('planificaciones')
-        .delete()
-        .eq('solicitud_id', solicitud_id);
+    const { error: deleteError } = await supabase.from('planificaciones').delete().eq('solicitud_id', solicitud_id);
     if (deleteError) {
-        console.error('Error al borrar planificación:', deleteError);
         return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
     }
-    const { error: updateError } = await supabase
-        .from('solicitudes')
-        .update({ estado_solicitud: 'Pendiente' })
-        .eq('id', solicitud_id);
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente' }).eq('id', solicitud_id);
     if (updateError) {
-        console.error('Error al actualizar solicitud a pendiente:', updateError);
         return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     }
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
