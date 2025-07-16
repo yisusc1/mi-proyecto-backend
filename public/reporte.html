@@ -84,12 +84,13 @@
             <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
             
             <div class="form-group">
-                <label for="id_solicitud">ID de Solicitud</label>
-                <div class="input-with-icon">
-                    <input type="text" id="id_solicitud" name="id_solicitud" required>
-                    <span id="open-search-modal" class="search-icon">🔍</span>
-                </div>
-            </div>
+    <label for="id_solicitud">ID de Solicitud</label>
+    <div class="input-with-icon">
+        <input type="text" id="id_solicitud" name="id_solicitud" required>
+        <span id="open-search-modal" class="search-icon" title="Buscar solicitud asignada">🔍</span>
+        <span id="open-fast-entry-modal" class="search-icon" title="Registro rápido de instalación">⚡</span>
+    </div>
+</div>
 
             <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" readonly required></div>
             <div class="form-group"><label for="equipo">Equipo</label>
@@ -147,6 +148,17 @@
                 </div>
         </div>
     </div>
+
+    <div id="fast-entry-modal" class="modal">
+    <div class="modal-content">
+        <span id="close-fast-entry-modal" class="close-button">&times;</span>
+        <h2>Clave de Registro Rápido</h2>
+        <p>Ingresa la clave de 4 dígitos para registrar una instalación encontrada.</p>
+        <input type="password" id="fast-entry-password" placeholder="Clave de 4 dígitos" maxlength="4" style="text-align:center; font-size: 1.5rem; letter-spacing: 0.5rem;">
+        <button id="validate-fast-entry-key" class="btn-primary" style="width: 100%; margin-top: 1rem;">Validar Clave</button>
+        <div id="fast-entry-message" class="status-message" style="margin-top: 1rem;"></div>
+    </div>
+</div>
 
 
     <script>
@@ -350,6 +362,72 @@
                 e.target.value = e.target.value.replace(/\D/g, '');
             });
         });
+
+// --- NUEVA LÓGICA PARA EL BOTÓN DE REGISTRO RÁPIDO ---
+
+// Referencias a los elementos del nuevo modal
+const fastEntryModal = document.getElementById('fast-entry-modal');
+const openFastEntryBtn = document.getElementById('open-fast-entry-modal');
+const closeFastEntryBtn = document.getElementById('close-fast-entry-modal');
+const fastEntryPasswordInput = document.getElementById('fast-entry-password');
+const validateFastEntryBtn = document.getElementById('validate-fast-entry-key');
+const fastEntryMessageDiv = document.getElementById('fast-entry-message');
+
+// Lógica para abrir y cerrar el modal de clave
+openFastEntryBtn.addEventListener('click', () => {
+    fastEntryModal.style.display = 'block';
+    fastEntryPasswordInput.focus();
+});
+closeFastEntryBtn.addEventListener('click', () => {
+    fastEntryModal.style.display = 'none';
+});
+
+// Lógica para validar la clave
+validateFastEntryBtn.addEventListener('click', async () => {
+    const enteredKey = fastEntryPasswordInput.value;
+    if (enteredKey.length !== 4) {
+        fastEntryMessageDiv.className = 'status-message error';
+        fastEntryMessageDiv.textContent = 'La clave debe tener 4 dígitos.';
+        return;
+    }
+
+    fastEntryMessageDiv.textContent = 'Validando...';
+    fastEntryMessageDiv.className = 'status-message';
+    
+    try {
+        const response = await fetch('/api/validate-temporary-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enteredKey: enteredKey })
+        });
+        
+        const data = await response.json();
+
+        if (data.valid) {
+            fastEntryMessageDiv.className = 'status-message success';
+            fastEntryMessageDiv.textContent = '¡Clave correcta!';
+            // Preparamos el formulario
+            document.getElementById('id_solicitud').value = 'INSTALACION-RAPIDA-01'; // ID especial
+            document.getElementById('nombre_cliente').value = 'Instalación Encontrada en Calle';
+            // Limpiamos otros campos que no aplican
+            document.getElementById('plan_contratado').value = '';
+            document.getElementById('equipo').value = '';
+            document.getElementById('tecnico_1').value = '';
+            document.getElementById('tecnico_2').value = '';
+            
+            setTimeout(() => {
+                fastEntryModal.style.display = 'none'; // Cerramos el modal
+            }, 1000);
+        } else {
+            fastEntryMessageDiv.className = 'status-message error';
+            fastEntryMessageDiv.textContent = data.message || 'Clave incorrecta.';
+        }
+    } catch (error) {
+        fastEntryMessageDiv.className = 'status-message error';
+        fastEntryMessageDiv.textContent = 'Error de conexión con el servidor.';
+    }
+});
+
     </script>
 </body>
 </html>
