@@ -6,74 +6,55 @@
     <title>Reporte de Instalación</title>
     <link rel="stylesheet" href="minimal-style.css">
     <style>
-        /* Estilos para el enlace de WhatsApp, si no están en minimal-style.css */
-        .whatsapp-link-container {
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .whatsapp-link-container a {
-            display: inline-block;
-            background-color: #25D366; /* Color de WhatsApp */
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-        .whatsapp-link-container a:hover {
-            background-color: #1DA851;
-        }
+        .whatsapp-link-container { margin-top: 1rem; text-align: center; }
+        .whatsapp-link-container a { display: inline-block; background-color: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background-color 0.3s ease; }
+        .whatsapp-link-container a:hover { background-color: #1DA851; }
+        input[readonly], select[readonly] { background-color: #f3f4f6; cursor: not-allowed; }
     </style>
 </head>
 <body>
     <div class="container" id="password-container">
-        <div class="form-header">
-            <h1>Acceso para Instaladores</h1>
-            <p>Ingrese la clave para acceder.</p>
-        </div>
+        <div class="form-header"><h1>Acceso para Instaladores</h1><p>Ingrese la clave para acceder.</p></div>
         <form id="password-form">
-            <div class="form-group">
-                <label for="password">Clave de Acceso</label>
-                <input type="password" id="password" required>
-            </div>
+            <div class="form-group"><label for="password">Clave de Acceso</label><input type="password" id="password" required></div>
             <button type="submit" class="btn-primary" style="width: 100%;">Ingresar</button>
         </form>
     </div>
 
     <div class="container" id="form-container" style="display:none;">
-        <div class="form-header">
-            <h1>Reporte de Instalación</h1>
-            <p>Llenar los datos técnicos de la instalación.</p>
-        </div>
+        <div class="form-header"><h1>Reporte de Instalación</h1><p>Llenar los datos técnicos de la instalación.</p></div>
         <form id="reporteForm">
             <div class="form-group"><label for="fecha_reporte">Fecha</label><input type="text" id="fecha_reporte" name="fecha_reporte" readonly required></div>
             <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
-            <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" required></div>
-            <div class="form-group"><label for="id_solicitud">ID de Solicitud</label><input type="text" id="id_solicitud" name="id_solicitud"></div>
+            
+            <div class="form-group">
+                <label for="id_solicitud">ID de Solicitud (Trabajos Pendientes)</label>
+                <select id="id_solicitud" name="id_solicitud" required>
+                    <option value="" disabled selected>Cargando trabajos pendientes...</option>
+                </select>
+            </div>
+
+            <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" readonly required></div>
             <div class="form-group"><label for="equipo">Equipo</label>
                 <select id="equipo" name="equipo" required>
                     <option value="" disabled selected>Seleccione un equipo</option>
-                    <option value="A">A</option><option value="B">B</option><option value="C">C</option>
-                    <option value="D">D</option><option value="E">E</option><option value="F">F</option>
-                    <option value="G">G</option><option value="H">H</option><option value="I">I</option>
-                    <option value="J">J</option><option value="K">K</option><option value="L">L</option>
-                    <option value="M">M</option><option value="N">N</option><option value="O">O</option>
-                    <option value="P">P</option><option value="Q">Q</option><option value="R">R</option>
-                    <option value="S">S</option><option value="T">T</option><option value="U">U</option>
-                    <option value="V">V</option><option value="W">W</option><option value="X">X</option>
-                    <option value="Y">Y</option><option value="Z">Z</option>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
                 </select>
             </div>
+             <div class="form-group"><label for="plan_contratado">Plan Contratado</label>
+                <select id="plan_contratado" name="plan_contratado" required>
+                    <option value="" disabled selected>Seleccione un plan</option>
+                    <option value="400 MB Residencial">400 MB Residencial</option><option value="600 MB Residencial">600 MB Residencial</option><option value="800 MB Residencial">800 MB Residencial</option><option value="400 MB Corporativo">400 MB Corporativo</option><option value="600 MB Corporativo">600 MB Corporativo</option><option value="800 MB Corporativo">800 MB Corporativo</option><option value="1 Giga Corporativo">1 Giga Corporativo</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="tecnico_1">Técnico 1</label><input type="text" id="tecnico_1" name="tecnico_1" required></div>
+            <div class="form-group"><label for="tecnico_2">Técnico 2</label><input type="text" id="tecnico_2" name="tecnico_2"></div>
+            
+            <hr>
             <div class="form-group"><label for="metodo_pago">Método de Pago</label>
                 <select id="metodo_pago" name="metodo_pago" required>
                     <option value="" disabled selected>Seleccione un método</option>
-                    <option value="Pago Movil">Pago Movil</option>
-                    <option value="Efectivo ($)">Efectivo ($)</option>
-                    <option value="Efectivo (Bs)">Efectivo (Bs)</option>
-                    <option value="Efectivo (€)">Efectivo (€)</option>
-                    <option value="Zelle">Zelle</option>
-                    <option value="Paypal">Paypal</option>
+                    <option value="Pago Movil">Pago Movil</option><option value="Efectivo ($)">Efectivo ($)</option><option value="Efectivo (Bs)">Efectivo (Bs)</option><option value="Efectivo (€)">Efectivo (€)</option><option value="Zelle">Zelle</option><option value="Paypal">Paypal</option>
                 </select>
             </div>
             <div class="form-group"><label for="pw_asignado">PW Asignado</label><input type="text" id="pw_asignado" name="pw_asignado" placeholder="Ej: PW1 o PW20500"></div>
@@ -81,18 +62,6 @@
             <div class="form-group"><label for="router">Router</label><input type="text" id="router" name="router"></div>
             <div class="form-group"><label for="precinto">Precinto</label><input type="text" id="precinto" name="precinto" pattern="[0-9]{8}" title="Debe contener exactamente 8 dígitos numéricos." maxlength="8"></div>
             <div class="form-group"><label for="onu_pon">ONU PON</label><input type="text" id="onu_pon" name="onu_pon"></div>
-            <div class="form-group"><label for="plan_contratado">Plan Contratado</label>
-                <select id="plan_contratado" name="plan_contratado" required>
-                    <option value="" disabled selected>Seleccione un plan</option>
-                    <option value="400 MB Residencial">400 MB Residencial</option>
-                    <option value="600 MB Residencial">600 MB Residencial</option>
-                    <option value="800 MB Residencial">800 MB Residencial</option>
-                    <option value="400 MB Corporativo">400 MB Corporativo</option>
-                    <option value="600 MB Corporativo">600 MB Corporativo</option>
-                    <option value="800 MB Corporativo">800 MB Corporativo</option>
-                    <option value="1 Giga Corporativo">1 Giga Corporativo</option>
-                </select>
-            </div>
             <div class="form-group"><label for="velocidad_descarga_mbps">V. Descarga (Mbps)</label><input type="number" id="velocidad_descarga_mbps" name="velocidad_descarga_mbps"></div>
             <div class="form-group"><label for="velocidad_subida_mbps">V. Subida (Mbps)</label><input type="number" id="velocidad_subida_mbps" name="velocidad_subida_mbps"></div>
             <div class="form-group"><label for="potencia_nap">Potencia NAP</label><input type="number" step="any" id="potencia_nap" name="potencia_nap" min="-30" max="-10"></div>
@@ -102,76 +71,56 @@
             <div class="form-group"><label for="tensores_utilizados">Tensores Utilizados</label><input type="number" id="tensores_utilizados" name="tensores_utilizados"></div>
             <div class="form-group"><label for="estado_instalacion">Estado de la Instalación</label>
                 <select id="estado_instalacion" name="estado_instalacion" required>
-                    <option value="Exitosa">Exitosa</option>
-                    <option value="En punta">En punta</option>
+                    <option value="Exitosa">Exitosa</option><option value="En punta">En punta</option>
                 </select>
             </div>
-            <div class="form-group"><label for="tecnico_1">Técnico 1</label><input type="text" id="tecnico_1" name="tecnico_1" required></div>
-            <div class="form-group"><label for="tecnico_2">Técnico 2</label><input type="text" id="tecnico_2" name="tecnico_2"></div>
             
             <div id="reporteForm-status-message" class="status-message"></div>
-            <div id="reporteForm-whatsapp-container" class="whatsapp-link-container" style="display: none;">
-                <p>El reporte ha sido guardado. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p>
-                <a id="reporteForm-whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a>
-            </div>
+            <div id="reporteForm-whatsapp-container" class="whatsapp-link-container" style="display: none;"><p>El reporte ha sido guardado. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p><a id="reporteForm-whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a></div>
             <button type="submit" class="btn-primary" id="reporteForm-btn">Guardar Reporte</button>
-            </form>
+        </form>
     </div>
 
     <script>
         function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) return;
-
             const submitButton = form.querySelector('button[type="submit"]');
             const statusMessage = form.querySelector(`#${formId}-status-message`);
             const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`);
             const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`);
-
             if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) return;
-
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
                 statusMessage.textContent = '';
                 whatsappLinkContainer.style.display = 'none';
-
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
-
-                // --- Lógica de pre-procesamiento de datos ---
                 dataObject.mac = dataObject.mac || 'N/A';
                 dataObject.router = dataObject.router || 'N/A';
-
                 try {
                     const response = await fetch(apiEndpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dataObject)
                     });
-
                     if (!response.ok) {
                         const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
                         throw new Error(errorData.message || 'Error del servidor al guardar');
                     }
-
                     statusMessage.className = 'status-message success';
                     statusMessage.textContent = '¡Información guardada con éxito!';
                     submitButton.style.display = 'none';
-
                     const whatsappMessage = messageBuilder(dataObject);
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
-                    
                     whatsappLink.href = whatsappUrl;
                     whatsappLinkContainer.style.display = 'block';
-
                     if (options.resetFormOnSuccess) {
                         form.reset(); 
                         if (options.postResetCallback) options.postResetCallback();
                     }
-
                 } catch (error) {
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
@@ -184,76 +133,90 @@
                 }
             });
         }
-
-            const buildReporteMessage = (data) => {
+        const buildReporteMessage = (data) => {
             return `*Reporte De instalación:*\n\n` +
-                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
-                `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
-                `*Equipo:* ${data.equipo || 'N/A'}\n` +
-                `*ID Solicitud:* ${data.id_solicitud || 'N/A'}\n` +
-                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
-                `*PW Asignado:* ${data.pw_asignado || 'N/A'}\n` +
-                `*MAC:* ${data.mac}\n` +
-                `*Router:* ${data.router}\n` +
-                `*Precinto:* ${data.precinto || 'N/A'}\n` +
-                `*ONU PON:* ${data.onu_pon || 'N/A'}\n` +
-                `*Instalación:* ${data.estado_instalacion || 'N/A'}\n` +
-                `*Método de Pago:* ${data.metodo_pago || 'N/A'}\n` +
-                `*PLAN:* ${data.plan_contratado || 'N/A'}\n` +
-                `*V. descarga:* ${data.velocidad_descarga_mbps || 'N/A'}\n` +
-                `*V. Subida:* ${data.velocidad_subida_mbps || 'N/A'}\n` +
-                `*Potencia NAP:* ${data.potencia_nap || 'N/A'}\n` +
-                `*Potencia Cliente:* ${data.potencia_cliente || 'N/A'}\n` +
-                `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
-                `*Metraje desechado:* ${data.metraje_desechado_m || 'N/A'}\n` +
-                `*Tensores utilizados:* ${data.tensores_utilizados || 'N/A'}\n` +
-                `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n` +
-                `*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
+                `*Fecha:* ${data.fecha_reporte || 'N/A'}\n*Hora:* ${data.hora_reporte || 'N/A'}\n*Equipo:* ${data.equipo || 'N/A'}\n` +
+                `*ID Solicitud:* ${data.id_solicitud || 'N/A'}\n*Cliente:* ${data.nombre_cliente || 'N/A'}\n*PW Asignado:* ${data.pw_asignado || 'N/A'}\n` +
+                `*MAC:* ${data.mac}\n*Router:* ${data.router}\n*Precinto:* ${data.precinto || 'N/A'}\n*ONU PON:* ${data.onu_pon || 'N/A'}\n` +
+                `*Instalación:* ${data.estado_instalacion || 'N/A'}\n*Método de Pago:* ${data.metodo_pago || 'N/A'}\n*PLAN:* ${data.plan_contratado || 'N/A'}\n` +
+                `*V. descarga:* ${data.velocidad_descarga_mbps || 'N/A'}\n*V. Subida:* ${data.velocidad_subida_mbps || 'N/A'}\n*Potencia NAP:* ${data.potencia_nap || 'N/A'}\n` +
+                `*Potencia Cliente:* ${data.potencia_cliente || 'N/A'}\n*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
+                `*Metraje desechado:* ${data.metraje_desechado_m || 'N/A'}\n*Tensores utilizados:* ${data.tensores_utilizados || 'N/A'}\n` +
+                `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
         };
 
-        const passwordForm = document.getElementById('password-form');
-        const passwordContainer = document.getElementById('password-container');
-        const formContainer = document.getElementById('form-container');
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordForm = document.getElementById('password-form');
+            const passwordContainer = document.getElementById('password-container');
+            const formContainer = document.getElementById('form-container');
+            const idSolicitudSelect = document.getElementById('id_solicitud');
+            let solicitudesPendientes = [];
 
-        passwordForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (e.target.querySelector('input').value === '0000') {
-                passwordContainer.style.display = 'none';
-                formContainer.style.display = 'block';
+            async function cargarSolicitudes() {
+                try {
+                    const response = await fetch('/api/solicitudes/pendientes');
+                    if (!response.ok) throw new Error('No se pudo conectar con el servidor.');
+                    solicitudesPendientes = await response.json();
+                    idSolicitudSelect.innerHTML = '<option value="" disabled selected>Seleccione un trabajo</option>';
+                    if (solicitudesPendientes.length === 0) {
+                        idSolicitudSelect.innerHTML = '<option value="" disabled>No hay trabajos pendientes</option>';
+                        return;
+                    }
+                    solicitudesPendientes.forEach(solicitud => {
+                        const option = document.createElement('option');
+                        option.value = solicitud.id;
+                        option.textContent = `ID: ${solicitud.id} - ${solicitud.nombre_cliente} (${solicitud.sector})`;
+                        idSolicitudSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    idSolicitudSelect.innerHTML = `<option value="" disabled>Error al cargar: ${error.message}</option>`;
+                }
+            }
 
-                const fechaInput = document.getElementById('fecha_reporte');
-                const horaInput = document.getElementById('hora_reporte');
-                const ahora = new Date();
-                const offset = ahora.getTimezoneOffset();
-                const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+            idSolicitudSelect.addEventListener('change', (e) => {
+                const selectedId = parseInt(e.target.value);
+                const solicitudSeleccionada = solicitudesPendientes.find(s => s.id === selectedId);
                 
-                fechaInput.value = ahoraLocal.toISOString().split('T')[0];
-                horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                if (solicitudSeleccionada) {
+                    document.getElementById('nombre_cliente').value = solicitudSeleccionada.nombre_cliente || '';
+                    document.getElementById('plan_contratado').value = solicitudSeleccionada.plan_contratado || '';
+                    document.getElementById('equipo').value = solicitudSeleccionada.equipo || '';
+                    document.getElementById('tecnico_1').value = solicitudSeleccionada.tecnico_1 || '';
+                    document.getElementById('tecnico_2').value = solicitudSeleccionada.tecnico_2 || '';
+                }
+            });
 
-                setupWhatsAppIntegration(
-                    'reporteForm',
-                    '/api/reportes/instalacion',
-                    buildReporteMessage,
-                    {
+            passwordForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (e.target.querySelector('input').value === '0000') {
+                    passwordContainer.style.display = 'none';
+                    formContainer.style.display = 'block';
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset() * 60000;
+                    const ahoraLocal = new Date(ahora.getTime() - offset);
+                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                    cargarSolicitudes();
+                    setupWhatsAppIntegration('reporteForm', '/api/reportes/instalacion', buildReporteMessage, {
                         resetFormOnSuccess: true,
                         postResetCallback: () => {
+                            cargarSolicitudes();
                             const ahora = new Date();
-                            const offset = ahora.getTimezoneOffset();
-                            const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
+                            const offset = ahora.getTimezoneOffset() * 60000;
+                            const ahoraLocal = new Date(ahora.getTime() - offset);
                             document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
                             document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
                         },
                         originalSubmitText: 'Guardar Reporte'
-                    }
-                );
+                    });
+                } else {
+                    alert('Clave incorrecta.');
+                }
+            });
 
-            } else {
-                alert('Clave incorrecta.');
-            }
-        });
-        
-        document.getElementById('precinto').addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/\D/g, '');
+            document.getElementById('precinto').addEventListener('input', (e) => {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
         });
     </script>
 </body>
