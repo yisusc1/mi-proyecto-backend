@@ -7,65 +7,20 @@
     <link rel="stylesheet" href="minimal-style.css">
     <style>
         .whatsapp-link-container { margin-top: 1rem; text-align: center; }
-        .whatsapp-link-container a { display: inline-block; background-color: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background-color 0.3s ease; }
+        .whatsapp-link-container a { display: inline-block; background-color: #25D366; color: white; padding: 0.8rem 1.5rem; border-radius: 5px; text-decoration: none; font-weight: bold; transition: background-color: 0.3s ease; }
         .whatsapp-link-container a:hover { background-color: #1DA851; }
         input[readonly] { background-color: #f3f4f6; cursor: not-allowed; }
-
-        /* --- NUEVOS ESTILOS PARA LA VENTANA DE BÚSQUEDA (MODAL) --- */
         .input-with-icon { display: flex; align-items: center; gap: 0.5rem; }
         .input-with-icon input { flex-grow: 1; }
         .search-icon { font-size: 1.5rem; cursor: pointer; user-select: none; }
-
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 10% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 600px;
-            border-radius: 8px;
-            position: relative;
-        }
-        .close-button {
-            color: #aaa;
-            position: absolute;
-            top: 10px; right: 20px;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .search-results-list {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            margin-top: 1rem;
-        }
-        .search-result-item {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-        }
-        .search-result-item:hover {
-            background-color: #f0f0f0;
-        }
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-        #modal-search-input {
-            width: 100%;
-            padding: 0.75rem;
-            box-sizing: border-box;
-        }
-
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; position: relative; }
+        .close-button { color: #aaa; position: absolute; top: 10px; right: 20px; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .search-results-list { max-height: 300px; overflow-y: auto; border: 1px solid #ddd; margin-top: 1rem; }
+        .search-result-item { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .search-result-item:hover { background-color: #f0f0f0; }
+        .search-result-item:last-child { border-bottom: none; }
+        #modal-search-input { width: 100%; padding: 0.75rem; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -84,37 +39,22 @@
             <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
             
             <div class="form-group">
-    <label for="id_solicitud">ID de Solicitud</label>
-    <div class="input-with-icon">
-        <input type="text" id="id_solicitud" name="id_solicitud" required>
-        <span id="open-search-modal" class="search-icon" title="Buscar solicitud asignada">🔍</span>
-        <span id="open-fast-entry-modal" class="search-icon" title="Registro rápido de instalación">⚡</span>
-    </div>
-</div>
+                <label for="id_solicitud">ID de Solicitud</label>
+                <div class="input-with-icon">
+                    <input type="text" id="id_solicitud" name="id_solicitud" required>
+                    <span id="open-search-modal" class="search-icon" title="Buscar solicitud asignada">🔍</span>
+                    <span id="open-fast-entry-modal" class="search-icon" title="Registro rápido de instalación">⚡</span>
+                </div>
+            </div>
 
-            <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" readonly required></div>
-            <div class="form-group"><label for="equipo">Equipo</label>
-                <select id="equipo" name="equipo" required>
-                    <option value="" disabled selected>Seleccione un equipo</option>
-                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
-                </select>
-            </div>
-             <div class="form-group"><label for="plan_contratado">Plan Contratado</label>
-                <select id="plan_contratado" name="plan_contratado" required>
-                    <option value="" disabled selected>Seleccione un plan</option>
-                    <option value="400 MB Residencial">400 MB Residencial</option><option value="600 MB Residencial">600 MB Residencial</option><option value="800 MB Residencial">800 MB Residencial</option><option value="400 MB Corporativo">400 MB Corporativo</option><option value="600 MB Corporativo">600 MB Corporativo</option><option value="800 MB Corporativo">800 MB Corporativo</option><option value="1 Giga Corporativo">1 Giga Corporativo</option>
-                </select>
-            </div>
+            <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" required></div>
+            
+            <div class="form-group"><label for="equipo">Equipo</label><select id="equipo" name="equipo" required><option value="" disabled selected>Seleccione un equipo</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option></select></div>
+            <div class="form-group"><label for="plan_contratado">Plan Contratado</label><select id="plan_contratado" name="plan_contratado" required><option value="" disabled selected>Seleccione un plan</option><option value="400 MB Residencial">400 MB Residencial</option><option value="600 MB Residencial">600 MB Residencial</option><option value="800 MB Residencial">800 MB Residencial</option><option value="400 MB Corporativo">400 MB Corporativo</option><option value="600 MB Corporativo">600 MB Corporativo</option><option value="800 MB Corporativo">800 MB Corporativo</option><option value="1 Giga Corporativo">1 Giga Corporativo</option></select></div>
             <div class="form-group"><label for="tecnico_1">Técnico 1</label><input type="text" id="tecnico_1" name="tecnico_1" required></div>
             <div class="form-group"><label for="tecnico_2">Técnico 2</label><input type="text" id="tecnico_2" name="tecnico_2"></div>
-            
             <hr>
-            <div class="form-group"><label for="metodo_pago">Método de Pago</label>
-                <select id="metodo_pago" name="metodo_pago" required>
-                    <option value="" disabled selected>Seleccione un método</option>
-                    <option value="Pago Movil">Pago Movil</option><option value="Efectivo ($)">Efectivo ($)</option><option value="Efectivo (Bs)">Efectivo (Bs)</option><option value="Efectivo (€)">Efectivo (€)</option><option value="Zelle">Zelle</option><option value="Paypal">Paypal</option>
-                </select>
-            </div>
+            <div class="form-group"><label for="metodo_pago">Método de Pago</label><select id="metodo_pago" name="metodo_pago" required><option value="" disabled selected>Seleccione un método</option><option value="Pago Movil">Pago Movil</option><option value="Efectivo ($)">Efectivo ($)</option><option value="Efectivo (Bs)">Efectivo (Bs)</option><option value="Efectivo (€)">Efectivo (€)</option><option value="Zelle">Zelle</option><option value="Paypal">Paypal</option></select></div>
             <div class="form-group"><label for="pw_asignado">PW Asignado</label><input type="text" id="pw_asignado" name="pw_asignado" placeholder="Ej: PW1 o PW20500"></div>
             <div class="form-group"><label for="mac">MAC</label><input type="text" id="mac" name="mac"></div>
             <div class="form-group"><label for="router">Router</label><input type="text" id="router" name="router"></div>
@@ -127,11 +67,7 @@
             <div class="form-group"><label for="metraje_utilizado_m">Metraje utilizado (m)</label><input type="number" id="metraje_utilizado_m" name="metraje_utilizado_m"></div>
             <div class="form-group"><label for="metraje_desechado_m">Metraje desechado (m)</label><input type="number" id="metraje_desechado_m" name="metraje_desechado_m"></div>
             <div class="form-group"><label for="tensores_utilizados">Tensores Utilizados</label><input type="number" id="tensores_utilizados" name="tensores_utilizados"></div>
-            <div class="form-group"><label for="estado_instalacion">Estado de la Instalación</label>
-                <select id="estado_instalacion" name="estado_instalacion" required>
-                    <option value="Exitosa">Exitosa</option><option value="En punta">En punta</option>
-                </select>
-            </div>
+            <div class="form-group"><label for="estado_instalacion">Estado de la Instalación</label><select id="estado_instalacion" name="estado_instalacion" required><option value="Exitosa">Exitosa</option><option value="En punta">En punta</option></select></div>
             
             <div id="reporteForm-status-message" class="status-message"></div>
             <div id="reporteForm-whatsapp-container" class="whatsapp-link-container" style="display: none;"><p>El reporte ha sido guardado. Ahora, haz clic en el botón para enviar el reporte a WhatsApp:</p><a id="reporteForm-whatsapp-link" href="#" target="_blank">Enviar Reporte por WhatsApp</a></div>
@@ -139,30 +75,11 @@
         </form>
     </div>
 
-    <div id="search-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Buscar Solicitud Pendiente</h2>
-            <input type="text" id="modal-search-input" placeholder="Buscar por ID, nombre o sector...">
-            <div id="search-results-list" class="search-results-list">
-                </div>
-        </div>
-    </div>
-
-    <div id="fast-entry-modal" class="modal">
-    <div class="modal-content">
-        <span id="close-fast-entry-modal" class="close-button">&times;</span>
-        <h2>Clave de Registro Rápido</h2>
-        <p>Ingresa la clave de 4 dígitos para registrar una instalación encontrada.</p>
-        <input type="password" id="fast-entry-password" placeholder="Clave de 4 dígitos" maxlength="4" style="text-align:center; font-size: 1.5rem; letter-spacing: 0.5rem;">
-        <button id="validate-fast-entry-key" class="btn-primary" style="width: 100%; margin-top: 1rem;">Validar Clave</button>
-        <div id="fast-entry-message" class="status-message" style="margin-top: 1rem;"></div>
-    </div>
-</div>
-
+    <div id="search-modal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2>Buscar Solicitud Pendiente</h2><input type="text" id="modal-search-input" placeholder="Buscar por ID, nombre o sector..."><div id="search-results-list" class="search-results-list"></div></div></div>
+    <div id="fast-entry-modal" class="modal"><div class="modal-content"><span id="close-fast-entry-modal" class="close-button">&times;</span><h2>Clave de Registro Rápido</h2><p>Ingresa la clave de 4 dígitos para registrar una instalación encontrada.</p><input type="password" id="fast-entry-password" placeholder="Clave de 4 dígitos" maxlength="4" style="text-align:center; font-size: 1.5rem; letter-spacing: 0.5rem;"><button id="validate-fast-entry-key" class="btn-primary" style="width: 100%; margin-top: 1rem;">Validar Clave</button><div id="fast-entry-message" class="status-message" style="margin-top: 1rem;"></div></div></div>
 
     <script>
-        // La lógica de WhatsApp no cambia
+        // La lógica de WhatsApp no cambia...
         function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) return;
@@ -214,7 +131,6 @@
                 }
             });
         }
-        // La construcción del mensaje de WhatsApp no cambia
         const buildReporteMessage = (data) => {
             return `*Reporte De instalación:*\n\n` +
                 `*Fecha:* ${data.fecha_reporte || 'N/A'}\n*Hora:* ${data.hora_reporte || 'N/A'}\n*Equipo:* ${data.equipo || 'N/A'}\n` +
@@ -227,39 +143,43 @@
                 `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
         };
 
-        // --- NUEVA LÓGICA COMPLETA PARA EL FORMULARIO Y LA BÚSQUEDA ---
+        // --- LÓGICA DEL FORMULARIO Y BÚSQUEDA (ACTUALIZADA) ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Referencias a elementos del DOM
             const passwordForm = document.getElementById('password-form');
             const passwordContainer = document.getElementById('password-container');
             const formContainer = document.getElementById('form-container');
+            const idSolicitudInput = document.getElementById('id_solicitud');
+            const nombreClienteInput = document.getElementById('nombre_cliente');
             
-            // Elementos del Modal
             const modal = document.getElementById('search-modal');
             const openModalBtn = document.getElementById('open-search-modal');
             const closeModalBtn = document.querySelector('.close-button');
             const searchInput = document.getElementById('modal-search-input');
             const resultsList = document.getElementById('search-results-list');
-            const idSolicitudInput = document.getElementById('id_solicitud');
             
-            let solicitudesPendientes = []; // Almacén de datos local
+            const fastEntryModal = document.getElementById('fast-entry-modal');
+            const openFastEntryBtn = document.getElementById('open-fast-entry-modal');
+            const closeFastEntryBtn = document.getElementById('close-fast-entry-modal');
+            const fastEntryPasswordInput = document.getElementById('fast-entry-password');
+            const validateFastEntryBtn = document.getElementById('validate-fast-entry-key');
+            const fastEntryMessageDiv = document.getElementById('fast-entry-message');
+
+            let solicitudesPendientes = [];
 
             // --- FUNCIONES ---
-
-            // Rellena los campos del formulario principal
             function fillFormFields(solicitud) {
                 if (!solicitud) return;
                 idSolicitudInput.value = solicitud.id;
-                document.getElementById('nombre_cliente').value = solicitud.nombre_cliente || '';
+                nombreClienteInput.value = solicitud.nombre_cliente || '';
+                nombreClienteInput.readOnly = true; // BLOQUEAR campo cliente
                 document.getElementById('plan_contratado').value = solicitud.plan_contratado || '';
                 document.getElementById('equipo').value = solicitud.equipo || '';
                 document.getElementById('tecnico_1').value = solicitud.tecnico_1 || '';
                 document.getElementById('tecnico_2').value = solicitud.tecnico_2 || '';
             }
             
-            // Muestra los resultados en la lista del modal
             function renderSearchResults(list) {
-                resultsList.innerHTML = ''; // Limpiar lista anterior
+                resultsList.innerHTML = '';
                 if (list.length === 0) {
                     resultsList.innerHTML = '<div class="search-result-item">No se encontraron resultados.</div>';
                     return;
@@ -268,83 +188,110 @@
                     const item = document.createElement('div');
                     item.className = 'search-result-item';
                     item.textContent = `ID: ${solicitud.id} - ${solicitud.nombre_cliente} (${solicitud.sector})`;
-                    item.dataset.id = solicitud.id; // Guardar el ID en el elemento
+                    item.dataset.id = solicitud.id;
                     resultsList.appendChild(item);
                 });
             }
 
-            // Carga las solicitudes desde el servidor
             async function cargarSolicitudes() {
                 try {
                     const response = await fetch('/api/solicitudes/pendientes');
                     if (!response.ok) throw new Error('No se pudo conectar.');
                     solicitudesPendientes = await response.json();
-                    renderSearchResults(solicitudesPendientes); // Mostrar la lista completa al inicio
+                    renderSearchResults(solicitudesPendientes);
                 } catch (error) {
                     resultsList.innerHTML = `<div class="search-result-item">Error al cargar: ${error.message}</div>`;
                 }
             }
-            
-            // --- EVENT LISTENERS ---
 
-            // Abrir y cerrar el modal
+            // --- EVENT LISTENERS ---
             openModalBtn.addEventListener('click', () => modal.style.display = 'block');
             closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
+            openFastEntryBtn.addEventListener('click', () => {
+                fastEntryModal.style.display = 'block';
+                fastEntryPasswordInput.focus();
+            });
+            closeFastEntryBtn.addEventListener('click', () => fastEntryModal.style.display = 'none');
+
             window.addEventListener('click', (e) => {
-                if (e.target == modal) modal.style.display = 'none';
+                if (e.target == modal || e.target == fastEntryModal) {
+                    modal.style.display = 'none';
+                    fastEntryModal.style.display = 'none';
+                }
             });
 
-            // Filtrar la lista al escribir en el campo de búsqueda del modal
             searchInput.addEventListener('input', () => {
                 const searchTerm = searchInput.value.toLowerCase();
-                const filteredList = solicitudesPendientes.filter(s => 
-                    s.id.toString().includes(searchTerm) ||
-                    s.nombre_cliente.toLowerCase().includes(searchTerm) ||
-                    s.sector.toLowerCase().includes(searchTerm)
-                );
+                const filteredList = solicitudesPendientes.filter(s => s.id.toString().includes(searchTerm) || s.nombre_cliente.toLowerCase().includes(searchTerm) || s.sector.toLowerCase().includes(searchTerm));
                 renderSearchResults(filteredList);
             });
             
-            // Seleccionar un item de la lista de resultados
             resultsList.addEventListener('click', (e) => {
                 if (e.target.classList.contains('search-result-item') && e.target.dataset.id) {
                     const selectedId = parseInt(e.target.dataset.id);
                     const solicitudSeleccionada = solicitudesPendientes.find(s => s.id === selectedId);
                     fillFormFields(solicitudSeleccionada);
-                    modal.style.display = 'none'; // Cerrar modal al seleccionar
+                    modal.style.display = 'none';
                 }
             });
 
-            // Validar ID si se escribe manualmente
             idSolicitudInput.addEventListener('blur', () => {
                 const manualId = parseInt(idSolicitudInput.value);
                 if (manualId) {
                     const solicitudEncontrada = solicitudesPendientes.find(s => s.id === manualId);
-                    if(solicitudEncontrada) {
-                       fillFormFields(solicitudEncontrada);
-                    }
+                    if(solicitudEncontrada) fillFormFields(solicitudEncontrada);
                 }
             });
 
-            // Lógica de la contraseña (inicia todo)
+            validateFastEntryBtn.addEventListener('click', async () => {
+                const enteredKey = fastEntryPasswordInput.value;
+                if (enteredKey.length !== 4) {
+                    fastEntryMessageDiv.className = 'status-message error';
+                    fastEntryMessageDiv.textContent = 'La clave debe tener 4 dígitos.';
+                    return;
+                }
+                fastEntryMessageDiv.textContent = 'Validando...';
+                fastEntryMessageDiv.className = 'status-message';
+                try {
+                    const response = await fetch('/api/validate-temporary-key', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ enteredKey })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Clave incorrecta');
+                    
+                    fastEntryMessageDiv.className = 'status-message success';
+                    fastEntryMessageDiv.textContent = '¡Clave correcta!';
+                    
+                    document.getElementById('reporteForm').reset();
+                    idSolicitudInput.value = 'FP-AUTO';
+                    nombreClienteInput.value = '';
+                    nombreClienteInput.readOnly = false; // <<< PERMITIR EDICIÓN
+                    nombreClienteInput.focus();
+                    
+                    setTimeout(() => { fastEntryModal.style.display = 'none'; }, 1000);
+                } catch (error) {
+                    fastEntryMessageDiv.className = 'status-message error';
+                    fastEntryMessageDiv.textContent = error.message;
+                }
+            });
+
             passwordForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 if (e.target.querySelector('input').value === '0000') {
                     passwordContainer.style.display = 'none';
                     formContainer.style.display = 'block';
-
                     const ahora = new Date();
                     const offset = ahora.getTimezoneOffset() * 60000;
                     const ahoraLocal = new Date(ahora.getTime() - offset);
                     document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
                     document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
-                    
-                    cargarSolicitudes(); // Cargar los datos para la búsqueda
-
+                    cargarSolicitudes();
                     setupWhatsAppIntegration('reporteForm', '/api/reportes/instalacion', buildReporteMessage, {
                         resetFormOnSuccess: true,
                         postResetCallback: () => {
-                            cargarSolicitudes(); // Recargar datos después de enviar
+                            cargarSolicitudes();
                             const ahora = new Date();
                             const offset = ahora.getTimezoneOffset() * 60000;
                             const ahoraLocal = new Date(ahora.getTime() - offset);
@@ -357,77 +304,10 @@
                     alert('Clave incorrecta.');
                 }
             });
-
             document.getElementById('precinto').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/\D/g, '');
             });
         });
-
-// --- NUEVA LÓGICA PARA EL BOTÓN DE REGISTRO RÁPIDO ---
-
-// Referencias a los elementos del nuevo modal
-const fastEntryModal = document.getElementById('fast-entry-modal');
-const openFastEntryBtn = document.getElementById('open-fast-entry-modal');
-const closeFastEntryBtn = document.getElementById('close-fast-entry-modal');
-const fastEntryPasswordInput = document.getElementById('fast-entry-password');
-const validateFastEntryBtn = document.getElementById('validate-fast-entry-key');
-const fastEntryMessageDiv = document.getElementById('fast-entry-message');
-
-// Lógica para abrir y cerrar el modal de clave
-openFastEntryBtn.addEventListener('click', () => {
-    fastEntryModal.style.display = 'block';
-    fastEntryPasswordInput.focus();
-});
-closeFastEntryBtn.addEventListener('click', () => {
-    fastEntryModal.style.display = 'none';
-});
-
-// Lógica para validar la clave
-validateFastEntryBtn.addEventListener('click', async () => {
-    const enteredKey = fastEntryPasswordInput.value;
-    if (enteredKey.length !== 4) {
-        fastEntryMessageDiv.className = 'status-message error';
-        fastEntryMessageDiv.textContent = 'La clave debe tener 4 dígitos.';
-        return;
-    }
-
-    fastEntryMessageDiv.textContent = 'Validando...';
-    fastEntryMessageDiv.className = 'status-message';
-    
-    try {
-        const response = await fetch('/api/validate-temporary-key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enteredKey: enteredKey })
-        });
-        
-        const data = await response.json();
-
-        if (data.valid) {
-            fastEntryMessageDiv.className = 'status-message success';
-            fastEntryMessageDiv.textContent = '¡Clave correcta!';
-            // Preparamos el formulario
-            document.getElementById('id_solicitud').value = 'INSTALACION-RAPIDA-01'; // ID especial
-            document.getElementById('nombre_cliente').value = 'Instalación Encontrada en Calle';
-            // Limpiamos otros campos que no aplican
-            document.getElementById('plan_contratado').value = '';
-            document.getElementById('equipo').value = '';
-            document.getElementById('tecnico_1').value = '';
-            document.getElementById('tecnico_2').value = '';
-            
-            setTimeout(() => {
-                fastEntryModal.style.display = 'none'; // Cerramos el modal
-            }, 1000);
-        } else {
-            fastEntryMessageDiv.className = 'status-message error';
-            fastEntryMessageDiv.textContent = data.message || 'Clave incorrecta.';
-        }
-    } catch (error) {
-        fastEntryMessageDiv.className = 'status-message error';
-        fastEntryMessageDiv.textContent = 'Error de conexión con el servidor.';
-    }
-});
-
     </script>
 </body>
 </html>
