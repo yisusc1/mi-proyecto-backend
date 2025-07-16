@@ -185,20 +185,20 @@
             });
         }
 
-        const buildReporteMessage = (data) => {
+            const buildReporteMessage = (data) => {
             return `*Reporte De instalación:*\n\n` +
                 `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
                 `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
-                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
-                `*ID Solicitud:* ${data.id_solicitud || 'N/A'}\n` +
                 `*Equipo:* ${data.equipo || 'N/A'}\n` +
-                `*Método de Pago:* ${data.metodo_pago || 'N/A'}\n` +
+                `*ID Solicitud:* ${data.id_solicitud || 'N/A'}\n` +
+                `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
                 `*PW Asignado:* ${data.pw_asignado || 'N/A'}\n` +
-                `*MAC:* ${data.mac}\n` + // Ya no necesita '|| N/A' aquí
-                `*Router:* ${data.router}\n` + // Ya no necesita '|| N/A' aquí
+                `*MAC:* ${data.mac}\n` +
+                `*Router:* ${data.router}\n` +
                 `*Precinto:* ${data.precinto || 'N/A'}\n` +
                 `*ONU PON:* ${data.onu_pon || 'N/A'}\n` +
                 `*Instalación:* ${data.estado_instalacion || 'N/A'}\n` +
+                `*Método de Pago:* ${data.metodo_pago || 'N/A'}\n` +
                 `*PLAN:* ${data.plan_contratado || 'N/A'}\n` +
                 `*V. descarga:* ${data.velocidad_descarga_mbps || 'N/A'}\n` +
                 `*V. Subida:* ${data.velocidad_subida_mbps || 'N/A'}\n` +
