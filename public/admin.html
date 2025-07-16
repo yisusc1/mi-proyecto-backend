@@ -28,14 +28,12 @@
             overflow-x: hidden;
         }
 
-        /* Contenedor principal de la aplicación */
         .app-container {
             display: flex;
             flex-direction: column;
             height: 100vh;
         }
 
-        /* Encabezado */
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -77,7 +75,6 @@
         }
         .temp-key-box code { font-size: 1.2rem; color: var(--primary-color); font-weight: bold; }
 
-        /* Contenedor del Kanban */
         .kanban-wrapper {
             flex-grow: 1;
             padding: 2rem;
@@ -86,7 +83,6 @@
             overflow-x: auto;
         }
 
-        /* Estilos personalizados de jKanban */
         .kanban-container { width: 100%; }
         .kanban-board {
             background-color: var(--board-bg);
@@ -108,15 +104,12 @@
             padding: 1rem;
             margin-bottom: 0.75rem;
             cursor: grab;
-            border-left: 3px solid transparent;
         }
         .kanban-item:active { cursor: grabbing; }
 
-        /* Controles dentro de las tarjetas de equipo */
         .board-controls { padding: 0.5rem; border-bottom: 1px solid #dfe1e6; margin-bottom: 0.5rem; }
         .board-controls select { width: 100%; padding: 0.5rem; border-radius: var(--border-radius); border: 1px solid #ccc; margin-bottom: 0.5rem; }
 
-        /* Pantalla de Login */
         .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-box { background: var(--card-bg); padding: 2rem; border-radius: var(--border-radius); box-shadow: var(--shadow); text-align: center; }
         .login-box input { display: block; width: 100%; margin: 1rem 0; padding: 0.7rem; }
@@ -187,20 +180,14 @@
                     </div>`;
         }
         
-        // Lógica corregida para arrastrar y soltar
         const dropEl = function (el, target, source) {
             const solicitudId = el.dataset.eid;
             const targetBoardEl = target.closest('.kanban-board');
             if (!targetBoardEl) return;
 
-            const isMovingToPending = targetBoardEl.dataset.id === 'pendientes';
-            
-            if (isMovingToPending) {
-                fetch('/api/planificacion/unassign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ solicitud_id: solicitudId })
-                }).catch(err => alert('Error al des-asignar la tarea.'));
+            if (targetBoardEl.dataset.id === 'pendientes') {
+                fetch('/api/planificacion/unassign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ solicitud_id: solicitudId }) })
+                .catch(err => alert('Error al des-asignar la tarea.'));
             } else {
                 const controls = targetBoardEl.querySelector('.board-controls');
                 if (!controls) return;
@@ -221,46 +208,50 @@
                 }
                 
                 el.style.opacity = '0.5';
-                fetch('/api/planificacion/assign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(assignmentData)
-                })
+                fetch('/api/planificacion/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignmentData) })
                 .then(res => {
                     if (!res.ok) throw new Error('Error del servidor al asignar.');
                     return res.json();
                 })
-                .then(() => {
-                    el.style.opacity = '1';
-                })
+                .then(() => el.style.opacity = '1')
                 .catch(err => {
                     alert(err.message);
-                    loadBoardForDate(dateSelector.value); // Recargar el tablero en caso de error
+                    loadBoardForDate(dateSelector.value);
                 });
             }
         };
 
+        // <<< FUNCIÓN CORREGIDA >>>
         function initializeKanban(pending, planned) {
             const boardContainer = document.getElementById('kanban-board-container');
             boardContainer.innerHTML = '';
             
-            const pendingItems = pending.map(s => ({ id: s.id, title: `<strong>${s.nombre_cliente}</strong><br><small>${s.sector}</small>` }));
-            const boards = [{ id: 'pendientes', title: 'Solicitudes Pendientes', item: pendingItems }];
+            // 1. Crear el tablero de pendientes por separado
+            const pendingBoard = {
+                id: 'pendientes',
+                title: 'Solicitudes Pendientes',
+                item: pending.map(s => ({ id: s.id, title: `<strong>${s.nombre_cliente}</strong><br><small>${s.sector}</small>` }))
+            };
             
+            // 2. Crear los tableros de equipos
             const teams = {};
             planned.forEach(task => {
-                const teamKey = task.equipo;
-                if (!teams[teamKey]) teams[teamKey] = { id: teamKey, equipo: task.equipo, tecnico1: task.tecnico1, tecnico2: task.tecnico2, tasks: [] };
-                teams[teamKey].tasks.push({ id: task.solicitud_id, title: `<strong>${task.nombre_cliente}</strong><br><small>${task.sector}</small>` });
+                if (!teams[task.equipo]) teams[task.equipo] = { ...task, tasks: [] };
+                teams[task.equipo].tasks.push({ id: task.solicitud_id, title: `<strong>${task.nombre_cliente}</strong><br><small>${task.sector}</small>` });
             });
 
-            Object.values(teams).forEach(team => {
-                boards.push({ id: team.id, title: createTeamControls(team.equipo, team.tecnico1, team.tecnico2), item: team.tasks });
-            });
+            const teamBoards = Object.values(teams).map(team => ({
+                id: team.id,
+                title: createTeamControls(team.equipo, team.tecnico1, team.tecnico2),
+                item: team.tasks
+            }));
+
+            // 3. Unir todos los tableros en un solo array
+            const allBoards = [pendingBoard, ...teamBoards];
 
             kanban = new jKanban({
                 element: '#kanban-board-container',
-                boards: boards,
+                boards: allBoards,
                 dropEl: dropEl
             });
         }
@@ -271,7 +262,8 @@
              fetch(`/api/planificacion/${dateString}`)
                 .then(res => res.json())
                 .then(data => {
-                    allTechnicians = data.technicians.map(t => t.nombre_tecnico);
+                    // <<< CORRECCIÓN DEL NOMBRE DE LA PROPIEDAD >>>
+                    allTechnicians = data.technicians.map(t => t.nombre);
                     initializeKanban(data.pendingInstallations, data.plannedInstallations);
                 })
                 .catch(err => boardContainer.innerHTML = `<p style="color:red;">Error al cargar datos.</p>`);
@@ -280,7 +272,7 @@
         // --- EVENT LISTENERS ---
         passwordForm.addEventListener('submit', e => {
             e.preventDefault();
-            if (e.target.querySelector('input').value === '666') { // Ajusta la clave si es necesario
+            if (e.target.querySelector('input').value === '666') {
                 document.getElementById('password-container').style.display = 'none';
                 document.getElementById('admin-panel').style.display = 'flex';
                 dateSelector.valueAsDate = new Date();
