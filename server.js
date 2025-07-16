@@ -74,14 +74,52 @@ app.get('/api/solicitudes/pendientes', async (req, res) => {
     }
 });
 
+// <<< ENDPOINT MODIFICADO >>>
 // Endpoint para recibir un reporte de instalación Y actualizar la solicitud.
 app.post('/api/reportes/instalacion', async (req, res) => {
     const reporteData = req.body;
     const solicitudId = reporteData.id_solicitud;
 
-    // Si el ID es numérico, es una solicitud normal y se debe actualizar.
+    // --- Lógica para Instalaciones Rápidas (FP-X) ---
+    if (solicitudId === 'FP-AUTO') {
+        // 1. Buscar el último ID de tipo FP-
+        const { data: reportesAnteriores, error: busquedaError } = await supabase
+            .from('reportes_instalacion')
+            .select('id_solicitud')
+            .like('id_solicitud', 'FP-%')
+            .order('created_at', { ascending: false }) // Ordenamos para encontrar el más reciente
+            .limit(1);
+
+        if (busquedaError) {
+            console.error('Error buscando último ID FP:', busquedaError);
+            return res.status(500).json({ message: 'Error al generar ID de reporte.' });
+        }
+
+        let nuevoNumero = 1;
+        if (reportesAnteriores && reportesAnteriores.length > 0) {
+            const ultimoId = reportesAnteriores[0].id_solicitud;
+            const ultimoNumero = parseInt(ultimoId.split('-')[1]);
+            nuevoNumero = ultimoNumero + 1;
+        }
+        
+        // 2. Asignar el nuevo ID
+        reporteData.id_solicitud = `FP-${nuevoNumero}`;
+
+        // 3. Guardar el reporte rápido
+        const { data, error } = await supabase
+            .from('reportes_instalacion')
+            .insert([reporteData])
+            .select();
+
+        if (error) {
+            console.error('Error guardando el reporte rápido:', error);
+            return res.status(500).json({ message: error.message });
+        }
+        return res.status(201).json({ message: 'Reporte de instalación rápida guardado!', data });
+    }
+
+    // --- Lógica para Solicitudes Normales (con ID numérico) ---
     if (solicitudId && !isNaN(parseInt(solicitudId))) {
-        // 1. Guardar el nuevo reporte
         const { data: reporteGuardado, error: errorReporte } = await supabase
             .from('reportes_instalacion')
             .insert([reporteData])
@@ -92,7 +130,6 @@ app.post('/api/reportes/instalacion', async (req, res) => {
             return res.status(500).json({ message: errorReporte.message });
         }
 
-        // 2. Actualizar el estado de la solicitud original a 'Exitosa'
         const { error: errorActualizacion } = await supabase
             .from('solicitudes')
             .update({ estado_solicitud: 'Exitosa' })
@@ -101,9 +138,16 @@ app.post('/api/reportes/instalacion', async (req, res) => {
         if (errorActualizacion) {
             console.error('Error actualizando estado:', errorActualizacion);
             return res.status(201).json({ 
-                message: 'Reporte guardado, pero hubo un error al actualizar el estado de la solicitud.',
+                message: 'Reporte guardado, pero hubo un error al actualizar el estado.',
                 data: reporteGuardado
             });
+        }
+        return res.status(201).json({ message: 'Reporte guardado y solicitud actualizada!', data: reporteGuardado });
+    }
+    
+    // Si el ID no es ni numérico ni FP-AUTO, es un error.
+    return res.status(400).json({ message: 'ID de solicitud no válido.' });
+});
         }
         res.status(201).json({ message: 'Reporte guardado y solicitud actualizada con éxito!', data: reporteGuardado });
 
