@@ -165,11 +165,10 @@ app.post('/api/validate-temporary-key', (req, res) => {
 // ----------------------------------------------------------------
 
 app.get('/api/planificacion/:date', async (req, res) => {
-    const { date } = req.params;
     const [tecnicosRes, pendientesRes, planificadasRes] = await Promise.all([
-        supabase.from('tecnicos').select('*'),
-        supabase.from('solicitudes').select('*').eq('estado_solicitud', 'Pendiente').eq('fecha_disponibilidad', date),
-        supabase.from('planificaciones').select('*').eq('fecha_asignada', date)
+        supabase.from('tecnicos').select('nombre'), // Solo necesitamos el nombre
+        supabase.from('solicitudes').select('*').eq('estado_solicitud', 'Pendiente').eq('fecha_disponibilidad', req.params.date),
+        supabase.from('planificaciones').select('*').eq('fecha_asignada', req.params.date)
     ]);
     if (tecnicosRes.error || pendientesRes.error || planificadasRes.error) {
         return res.status(500).json({ message: "Error al cargar datos del panel" });
@@ -181,35 +180,35 @@ app.get('/api/planificacion/:date', async (req, res) => {
     });
 });
 
+// <<< ENDPOINT MEJORADO >>>
 app.post('/api/planificacion/assign', async (req, res) => {
     const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector } = req.body;
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Asignada', equipo: equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
-    if (updateError) {
-        return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
-    }
-    const { error: insertError } = await supabase.from('planificaciones').insert({ solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector, estado_asignacion: 'Asignada' });
-    if (insertError) {
-        return res.status(400).json({ error: `Error al crear planificación: ${insertError.message}` });
-    }
-    res.json({ result: 'success', message: 'Tarea asignada con éxito.' });
+
+    // 1. Usamos `upsert` para insertar o actualizar la planificación.
+    // Esto evita duplicados si se reasigna una tarea.
+    const { error: upsertError } = await supabase
+        .from('planificaciones')
+        .upsert({ solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+    
+    if (upsertError) return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
+
+    // 2. Actualizar la solicitud a un estado 'Asignada'.
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Asignada', equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
+    
+    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
+
+    res.json({ result: 'success', message: 'Tarea asignada/actualizada con éxito.' });
 });
 
 app.post('/api/planificacion/unassign', async (req, res) => {
     const { solicitud_id } = req.body;
-    if (!solicitud_id) {
-        return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
-    }
+    if (!solicitud_id) return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
     const { error: deleteError } = await supabase.from('planificaciones').delete().eq('solicitud_id', solicitud_id);
-    if (deleteError) {
-        return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
-    }
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente' }).eq('id', solicitud_id);
-    if (updateError) {
-        return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
-    }
+    if (deleteError) return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente', equipo: null, tecnico_1: null, tecnico_2: null }).eq('id', solicitud_id);
+    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
-
 
 // ----------------------------------------------------------------
 // --- ENDPOINT PARA FACTIBILIDAD ---------------------------------
