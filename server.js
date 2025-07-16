@@ -44,31 +44,68 @@ app.post('/api/solicitudes', async (req, res) => {
   res.status(201).json({ message: 'Solicitud creada con éxito', data: data });
 });
 
-// Endpoint para recibir un reporte de instalación
-app.post('/api/reportes/instalacion', async (req, res) => {
-    // El objeto req.body ya contiene todos los datos del formulario,
-    // incluidos los nuevos campos que agregaste.
+// =================================================================
+// === SECCIÓN DE REPORTES (CON LA NUEVA LÓGICA) ===================
+// =================================================================
 
-    console.log('Recibiendo datos para reporte:', req.body); // Útil para depurar
+// <<< NUEVO ENDPOINT >>>
+// Endpoint para que el formulario de reporte obtenga los trabajos pendientes.
+app.get('/api/solicitudes/pendientes', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('solicitudes')
+            .select('id, nombre_cliente, sector, plan_contratado, equipo, tecnico_1, tecnico_2')
+            .eq('estado_solicitud', 'Asignada'); // Busca los trabajos listos para instalar
 
-    const { data, error } = await supabase
-        .from('reportes_instalacion') // ¡Asegúrate de que este sea el nombre correcto de tu tabla!
-        .insert([
-            // Simplemente pasamos el objeto completo del body.
-            // Supabase mapeará los campos a las columnas con el mismo nombre.
-            req.body 
-        ])
-        .select(); // El .select() es útil para devolver el registro creado.
-
-    if (error) {
-        console.error('Error guardando el reporte en Supabase:', error);
-        return res.status(500).json({ message: error.message });
+        if (error) throw error;
+        res.json(data || []);
+    } catch (error) {
+        console.error('Error al obtener solicitudes pendientes:', error);
+        res.status(500).json({ message: 'Error al obtener las solicitudes pendientes.' });
     }
-
-    res.status(201).json({ message: 'Reporte guardado con éxito!', data });
 });
 
-// Endpoint para recibir un reporte de soporte
+
+// <<< ENDPOINT MODIFICADO >>>
+// Endpoint para recibir un reporte de instalación Y actualizar la solicitud.
+app.post('/api/reportes/instalacion', async (req, res) => {
+    const reporteData = req.body;
+    const solicitudId = reporteData.id_solicitud;
+
+    if (!solicitudId) {
+        return res.status(400).json({ message: 'No se ha seleccionado un ID de solicitud válido.' });
+    }
+
+    // 1. Guardar el nuevo reporte en la tabla 'reportes_instalacion'
+    const { data: reporteGuardado, error: errorReporte } = await supabase
+        .from('reportes_instalacion')
+        .insert([reporteData])
+        .select();
+
+    if (errorReporte) {
+        console.error('Error guardando el reporte:', errorReporte);
+        return res.status(500).json({ message: errorReporte.message });
+    }
+
+    // 2. Si el reporte se guardó, actualizar el estado de la solicitud original a 'Exitosa'
+    const { error: errorActualizacion } = await supabase
+        .from('solicitudes')
+        .update({ estado_solicitud: 'Exitosa' }) // Cambiamos el estado
+        .eq('id', solicitudId);                 // Donde el ID coincida
+
+    if (errorActualizacion) {
+        console.error('Error actualizando el estado de la solicitud:', errorActualizacion);
+        return res.status(201).json({ 
+            message: 'Reporte guardado, pero hubo un error al actualizar el estado de la solicitud original.',
+            data: reporteGuardado
+        });
+    }
+
+    // 3. Si todo fue exitoso
+    res.status(201).json({ message: 'Reporte guardado y solicitud actualizada con éxito!', data: reporteGuardado });
+});
+
+// Endpoint para recibir un reporte de soporte (sin cambios)
 app.post('/api/reportes/soporte', async (req, res) => {
     const reporte = req.body;
     const { data, error } = await supabase.from('reportes_soporte').insert(reporte);
@@ -87,18 +124,15 @@ app.post('/api/reportes/soporte', async (req, res) => {
 // Endpoint para obtener los datos iniciales del tablero Kanban para una fecha específica
 app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
-
     const [tecnicosRes, pendientesRes, planificadasRes] = await Promise.all([
         supabase.from('tecnicos').select('*'),
         supabase.from('solicitudes').select('*').eq('estado_solicitud', 'Pendiente').eq('fecha_disponibilidad', date),
         supabase.from('planificaciones').select('*').eq('fecha_asignada', date)
     ]);
-
     if (tecnicosRes.error || pendientesRes.error || planificadasRes.error) {
         console.error('Error al cargar datos del panel:', tecnicosRes.error || pendientesRes.error || planificadasRes.error);
         return res.status(500).json({ message: "Error al cargar datos del panel" });
     }
-
     res.json({
         technicians: tecnicosRes.data,
         pendingInstallations: pendientesRes.data,
@@ -106,14 +140,20 @@ app.get('/api/planificacion/:date', async (req, res) => {
     });
 });
 
+// <<< ENDPOINT MODIFICADO >>>
 // Endpoint para asignar una tarea a un equipo
 app.post('/api/planificacion/assign', async (req, res) => {
     const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, nombre_cliente, sector } = req.body;
 
-    // 1. Actualizar la solicitud
+    // 1. Actualizar la solicitud a un estado consistente: 'Asignada'
     const { error: updateError } = await supabase
         .from('solicitudes')
-        .update({ estado_solicitud: `Planificada para ${equipo}` })
+        .update({ 
+            estado_solicitud: 'Asignada', // Cambiado para consistencia
+            equipo: equipo,                // Guardamos el equipo y técnicos
+            tecnico_1: tecnico1,
+            tecnico_2: tecnico2
+        })
         .eq('id', solicitud_id);
 
     if (updateError) {
@@ -134,81 +174,61 @@ app.post('/api/planificacion/assign', async (req, res) => {
     res.json({ result: 'success', message: 'Tarea asignada con éxito.' });
 });
 
-// Endpoint para des-asignar una tarea (VERSIÓN MEJORADA)
+// Endpoint para des-asignar una tarea
 app.post('/api/planificacion/unassign', async (req, res) => {
     const { solicitud_id } = req.body;
-
     if (!solicitud_id) {
         return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
     }
-
-    // 1. Borrar el registro de la tabla 'planificaciones' PRIMERO.
     const { error: deleteError } = await supabase
         .from('planificaciones')
         .delete()
         .eq('solicitud_id', solicitud_id);
-    
     if (deleteError) {
         console.error('Error al borrar planificación:', deleteError);
         return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
     }
-
-    // 2. Si el borrado fue exitoso, actualizar el estado en 'solicitudes' a 'Pendiente'.
     const { error: updateError } = await supabase
         .from('solicitudes')
         .update({ estado_solicitud: 'Pendiente' })
         .eq('id', solicitud_id);
-
     if (updateError) {
         console.error('Error al actualizar solicitud a pendiente:', updateError);
         return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     }
-
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
+
 
 // ----------------------------------------------------------------
 // --- ENDPOINT PARA FACTIBILIDAD ---------------------------------
 // ----------------------------------------------------------------
 
-// Función para calcular la distancia entre dos coordenadas (fórmula de Haversine)
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3; // Radio de la Tierra en metros
+  const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;
   const φ2 = lat2 * Math.PI / 180;
   const Δφ = (lat2 - lat1) * Math.PI / 180;
   const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c; // Distancia en metros
+  return R * c;
 }
 
-// Endpoint que recibe coordenadas de un cliente y devuelve la NAP más cercana
 app.post('/api/factibilidad', async (req, res) => {
     const { latitud, longitud } = req.body;
-
     if (!latitud || !longitud) {
         return res.status(400).json({ error: 'Faltan coordenadas.' });
     }
-
-    // 1. Obtener todas las NAPs de la base de datos
     const { data: naps, error } = await supabase.from('naps').select('*');
-
     if (error) {
         return res.status(500).json({ error: error.message });
     }
     if (!naps || naps.length === 0) {
         return res.status(404).json({ error: 'No se encontraron NAPs en la base de datos.' });
     }
-
-    // 2. Calcular la distancia a cada NAP y encontrar la más cercana
     let closestNap = null;
     let minDistance = Infinity;
-
     naps.forEach(nap => {
         const distance = getDistanceInMeters(latitud, longitud, nap.latitud, nap.longitud);
         if (distance < minDistance) {
@@ -216,11 +236,7 @@ app.post('/api/factibilidad', async (req, res) => {
             closestNap = nap;
         }
     });
-
-    // 3. Determinar si es factible (ej: si está a menos de 250 metros)
     const esFactible = minDistance <= 250;
-
-    // 4. Devolver el resultado
     res.json({
         cliente: { latitud, longitud },
         nap_cercana: closestNap,
