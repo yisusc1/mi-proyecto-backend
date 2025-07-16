@@ -35,6 +35,13 @@
                     <input type="date" id="fecha-planificacion">
                     <button id="add-equipo-btn" class="btn btn-primary">➕ Añadir Equipo</button>
                 </div>
+
+                <div id="temp-key-container" style="text-align: center; background: #fff; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #dfe1e6;">
+    <p style="margin: 0; font-weight: bold;">Clave de Registro Rápido:</p>
+    <code id="temp-key-display" style="font-size: 1.75rem; color: #007AFF; letter-spacing: 0.2rem;">----</code>
+    <button id="refresh-key-btn" style="margin-left: 1rem; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Actualizar</button>
+</div>
+
             </header>
             <div id="admin-board" class="kanban-container"></div>
         </main>
@@ -63,6 +70,9 @@
                     alert('Clave incorrecta');
                 }
             });
+
+            // Lógica para el botón de refrescar clave
+document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
 
             dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
 
@@ -216,6 +226,22 @@
                     </div>`;
             }
         });
+
+// Nueva función para obtener y mostrar la clave temporal
+async function fetchAndDisplayTempKey() {
+    const keyDisplay = document.getElementById('temp-key-display');
+    keyDisplay.textContent = '...'; // Muestra que está cargando
+    try {
+        const response = await fetch('/api/temporary-key');
+        if (!response.ok) throw new Error('Error de red');
+        const data = await response.json();
+        keyDisplay.textContent = data.key;
+    } catch (error) {
+        keyDisplay.textContent = 'Error';
+        console.error('No se pudo obtener la clave temporal:', error);
+    }
+}
+
     </script>
 </body>
 </html>
