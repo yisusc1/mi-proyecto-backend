@@ -79,7 +79,6 @@
     <div id="fast-entry-modal" class="modal"><div class="modal-content"><span id="close-fast-entry-modal" class="close-button">&times;</span><h2>Clave de Registro Rápido</h2><p>Ingresa la clave de 4 dígitos para registrar una instalación encontrada.</p><input type="password" id="fast-entry-password" placeholder="Clave de 4 dígitos" maxlength="4" style="text-align:center; font-size: 1.5rem; letter-spacing: 0.5rem;"><button id="validate-fast-entry-key" class="btn-primary" style="width: 100%; margin-top: 1rem;">Validar Clave</button><div id="fast-entry-message" class="status-message" style="margin-top: 1rem;"></div></div></div>
 
     <script>
-        // La lógica de WhatsApp no cambia...
         function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
             if (!form) return;
@@ -94,27 +93,36 @@
                 submitButton.textContent = 'Guardando...';
                 statusMessage.textContent = '';
                 whatsappLinkContainer.style.display = 'none';
+                
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
                 dataObject.mac = dataObject.mac || 'N/A';
                 dataObject.router = dataObject.router || 'N/A';
+
                 try {
                     const response = await fetch(apiEndpoint, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dataObject)
                     });
+
+                    const responseData = await response.json();
+
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
-                        throw new Error(errorData.message || 'Error del servidor al guardar');
+                        throw new Error(responseData.message || 'Error del servidor al guardar');
                     }
+
                     statusMessage.className = 'status-message success';
                     statusMessage.textContent = '¡Información guardada con éxito!';
                     submitButton.style.display = 'none';
-                    const whatsappMessage = messageBuilder(dataObject);
+
+                    const finalDataObject = responseData.data[0]; 
+                    const whatsappMessage = messageBuilder(finalDataObject);
+                    
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
                     whatsappLink.href = whatsappUrl;
                     whatsappLinkContainer.style.display = 'block';
+
                     if (options.resetFormOnSuccess) {
                         form.reset(); 
                         if (options.postResetCallback) options.postResetCallback();
@@ -143,7 +151,6 @@
                 `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
         };
 
-        // --- LÓGICA DEL FORMULARIO Y BÚSQUEDA (ACTUALIZADA) ---
         document.addEventListener('DOMContentLoaded', () => {
             const passwordForm = document.getElementById('password-form');
             const passwordContainer = document.getElementById('password-container');
@@ -166,12 +173,11 @@
 
             let solicitudesPendientes = [];
 
-            // --- FUNCIONES ---
             function fillFormFields(solicitud) {
                 if (!solicitud) return;
                 idSolicitudInput.value = solicitud.id;
                 nombreClienteInput.value = solicitud.nombre_cliente || '';
-                nombreClienteInput.readOnly = true; // BLOQUEAR campo cliente
+                nombreClienteInput.readOnly = true; 
                 document.getElementById('plan_contratado').value = solicitud.plan_contratado || '';
                 document.getElementById('equipo').value = solicitud.equipo || '';
                 document.getElementById('tecnico_1').value = solicitud.tecnico_1 || '';
@@ -204,7 +210,6 @@
                 }
             }
 
-            // --- EVENT LISTENERS ---
             openModalBtn.addEventListener('click', () => modal.style.display = 'block');
             closeModalBtn.addEventListener('click', () => modal.style.display = 'none');
             openFastEntryBtn.addEventListener('click', () => {
@@ -265,9 +270,17 @@
                     fastEntryMessageDiv.textContent = '¡Clave correcta!';
                     
                     document.getElementById('reporteForm').reset();
+                    
+                    // <<< CORRECCIÓN PARA FECHA Y HORA >>>
+                    const ahora = new Date();
+                    const offset = ahora.getTimezoneOffset() * 60000;
+                    const ahoraLocal = new Date(ahora.getTime() - offset);
+                    document.getElementById('fecha_reporte').value = ahoraLocal.toISOString().split('T')[0];
+                    document.getElementById('hora_reporte').value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
+                    
                     idSolicitudInput.value = 'FP-AUTO';
                     nombreClienteInput.value = '';
-                    nombreClienteInput.readOnly = false; // <<< PERMITIR EDICIÓN
+                    nombreClienteInput.readOnly = false;
                     nombreClienteInput.focus();
                     
                     setTimeout(() => { fastEntryModal.style.display = 'none'; }, 1000);
