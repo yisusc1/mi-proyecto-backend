@@ -49,14 +49,38 @@
         <form id="reporteForm">
             <div class="form-group"><label for="fecha_reporte">Fecha</label><input type="text" id="fecha_reporte" name="fecha_reporte" readonly required></div>
             <div class="form-group"><label for="hora_reporte">Hora</label><input type="text" id="hora_reporte" name="hora_reporte" readonly required></div>
-            <div class="form-group"><label for="equipo">Equipo</label><input type="text" id="equipo" name="equipo" required></div>
             <div class="form-group"><label for="nombre_cliente">Cliente</label><input type="text" id="nombre_cliente" name="nombre_cliente" required></div>
-            <div class="form-group"><label for="si_asignado">SI Asignado</label><input type="text" id="si_asignado" name="si_asignado"></div>
+            <div class="form-group"><label for="id_solicitud">ID de Solicitud</label><input type="text" id="id_solicitud" name="id_solicitud"></div>
+            <div class="form-group"><label for="equipo">Equipo</label>
+                <select id="equipo" name="equipo" required>
+                    <option value="" disabled selected>Seleccione un equipo</option>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+                    <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+                    <option value="G">G</option><option value="H">H</option><option value="I">I</option>
+                    <option value="J">J</option><option value="K">K</option><option value="L">L</option>
+                    <option value="M">M</option><option value="N">N</option><option value="O">O</option>
+                    <option value="P">P</option><option value="Q">Q</option><option value="R">R</option>
+                    <option value="S">S</option><option value="T">T</option><option value="U">U</option>
+                    <option value="V">V</option><option value="W">W</option><option value="X">X</option>
+                    <option value="Y">Y</option><option value="Z">Z</option>
+                </select>
+            </div>
+            <div class="form-group"><label for="metodo_pago">Método de Pago</label>
+                <select id="metodo_pago" name="metodo_pago" required>
+                    <option value="" disabled selected>Seleccione un método</option>
+                    <option value="Pago Movil">Pago Movil</option>
+                    <option value="Efectivo ($)">Efectivo ($)</option>
+                    <option value="Efectivo (Bs)">Efectivo (Bs)</option>
+                    <option value="Efectivo (€)">Efectivo (€)</option>
+                    <option value="Zelle">Zelle</option>
+                    <option value="Paypal">Paypal</option>
+                </select>
+            </div>
             <div class="form-group"><label for="pw_asignado">PW Asignado</label><input type="text" id="pw_asignado" name="pw_asignado" placeholder="Ej: PW1 o PW20500"></div>
             <div class="form-group"><label for="mac">MAC</label><input type="text" id="mac" name="mac"></div>
+            <div class="form-group"><label for="router">Router</label><input type="text" id="router" name="router"></div>
             <div class="form-group"><label for="precinto">Precinto</label><input type="text" id="precinto" name="precinto" pattern="[0-9]{8}" title="Debe contener exactamente 8 dígitos numéricos." maxlength="8"></div>
             <div class="form-group"><label for="onu_pon">ONU PON</label><input type="text" id="onu_pon" name="onu_pon"></div>
-            <div class="form-group"><label for="router">Router</label><input type="text" id="router" name="router"></div>
             <div class="form-group"><label for="plan_contratado">Plan Contratado</label>
                 <select id="plan_contratado" name="plan_contratado" required>
                     <option value="" disabled selected>Seleccione un plan</option>
@@ -75,6 +99,7 @@
             <div class="form-group"><label for="potencia_cliente">Potencia Cliente</label><input type="number" step="any" id="potencia_cliente" name="potencia_cliente"></div>
             <div class="form-group"><label for="metraje_utilizado_m">Metraje utilizado (m)</label><input type="number" id="metraje_utilizado_m" name="metraje_utilizado_m"></div>
             <div class="form-group"><label for="metraje_desechado_m">Metraje desechado (m)</label><input type="number" id="metraje_desechado_m" name="metraje_desechado_m"></div>
+            <div class="form-group"><label for="tensores_utilizados">Tensores Utilizados</label><input type="number" id="tensores_utilizados" name="tensores_utilizados"></div>
             <div class="form-group"><label for="estado_instalacion">Estado de la Instalación</label>
                 <select id="estado_instalacion" name="estado_instalacion" required>
                     <option value="Exitosa">Exitosa</option>
@@ -94,43 +119,31 @@
     </div>
 
     <script>
-        // --- FUNCIÓN REUTILIZABLE PARA LA INTEGRACIÓN DE WHATSAPP (Mantenla una sola vez en tu HTML o en un archivo JS separado) ---
         function setupWhatsAppIntegration(formId, apiEndpoint, messageBuilder, options = {}) {
             const form = document.getElementById(formId);
-            if (!form) {
-                console.error(`Formulario con ID '${formId}' no encontrado.`);
-                return;
-            }
+            if (!form) return;
 
             const submitButton = form.querySelector('button[type="submit"]');
-            const statusMessage = form.querySelector(`#${formId}-status-message`); // Busca por ID específico
-            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`); // Busca por ID específico
-            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`); // Busca por ID específico
+            const statusMessage = form.querySelector(`#${formId}-status-message`);
+            const whatsappLinkContainer = form.querySelector(`#${formId}-whatsapp-container`);
+            const whatsappLink = form.querySelector(`#${formId}-whatsapp-link`);
 
-            // Validar que todos los elementos necesarios existan
-            if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) {
-                console.error(`Faltan elementos necesarios para la integración de WhatsApp en el formulario '${formId}'. Asegúrate de que los IDs como '${formId}-status-message', '${formId}-whatsapp-container', '${formId}-whatsapp-link' y el ID del botón de submit estén correctos.`);
-                return;
-            }
+            if (!submitButton || !statusMessage || !whatsappLinkContainer || !whatsappLink) return;
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
                 submitButton.disabled = true;
                 submitButton.textContent = 'Guardando...';
-                statusMessage.className = 'status-message'; // Reinicia la clase
-                statusMessage.textContent = ''; // Limpia el mensaje
-                whatsappLinkContainer.style.display = 'none'; // Oculta el enlace de WhatsApp
+                statusMessage.textContent = '';
+                whatsappLinkContainer.style.display = 'none';
 
                 const formData = new FormData(form);
                 const dataObject = Object.fromEntries(formData.entries());
 
-                // --- Lógica de pre-procesamiento de datos específica del formulario (si aplica) ---
-                // Aquí podrías añadir un 'preProcessor' en las opciones si cada form tiene lógicas muy distintas.
-                // Para este caso, mantenemos la lógica de Solicitud y Reporte en sus respectivos constructores de mensaje
-                // o en una función de pre-procesamiento externa si se repite.
-                // Por ahora, se asume que 'dataObject' tal como está extraído de FormData es suficiente
-                // para el 'messageBuilder'.
+                // --- Lógica de pre-procesamiento de datos ---
+                dataObject.mac = dataObject.mac || 'N/A';
+                dataObject.router = dataObject.router || 'N/A';
 
                 try {
                     const response = await fetch(apiEndpoint, {
@@ -146,55 +159,45 @@
 
                     statusMessage.className = 'status-message success';
                     statusMessage.textContent = '¡Información guardada con éxito!';
-                    
-                    // Ocultar el botón de guardar
                     submitButton.style.display = 'none';
 
-                    // Construir el mensaje de WhatsApp usando la función proporcionada
                     const whatsappMessage = messageBuilder(dataObject);
                     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`;
                     
                     whatsappLink.href = whatsappUrl;
-                    whatsappLinkContainer.style.display = 'block'; // Mostrar el contenedor del enlace de WhatsApp
+                    whatsappLinkContainer.style.display = 'block';
 
-                    // Opcional: Reiniciar el formulario si se define en las opciones
                     if (options.resetFormOnSuccess) {
                         form.reset(); 
-                        // Lógica para reestablecer campos específicos como fechas/horas
-                        if (options.postResetCallback) {
-                            options.postResetCallback();
-                        }
+                        if (options.postResetCallback) options.postResetCallback();
                     }
 
                 } catch (error) {
                     statusMessage.className = 'status-message error';
                     statusMessage.textContent = `Error: ${error.message}`;
                 } finally {
-                    // Si hubo un error, re-habilitar y mostrar el botón de guardar
                     if (statusMessage.className.includes('error')) {
                          submitButton.disabled = false;
-                         submitButton.textContent = options.originalSubmitText || 'Guardar'; // Texto original
-                         submitButton.style.display = 'block'; // Asegurarse de que esté visible
+                         submitButton.textContent = options.originalSubmitText || 'Guardar';
+                         submitButton.style.display = 'block';
                     }
                 }
             });
         }
 
-        // --- CÓDIGO ESPECÍFICO PARA CADA FORMULARIO ---
-
-        // Función para construir el mensaje de WhatsApp para el formulario de Reporte
         const buildReporteMessage = (data) => {
             return `*Reporte De instalación:*\n\n` +
                 `*Fecha:* ${data.fecha_reporte || 'N/A'}\n` +
                 `*Hora:* ${data.hora_reporte || 'N/A'}\n` +
-                `*Equipo:* ${data.equipo || 'N/A'}\n` +
                 `*Cliente:* ${data.nombre_cliente || 'N/A'}\n` +
-                `*SI Asignado:* ${data.si_asignado || 'N/A'}\n` +
+                `*ID Solicitud:* ${data.id_solicitud || 'N/A'}\n` +
+                `*Equipo:* ${data.equipo || 'N/A'}\n` +
+                `*Método de Pago:* ${data.metodo_pago || 'N/A'}\n` +
                 `*PW Asignado:* ${data.pw_asignado || 'N/A'}\n` +
+                `*MAC:* ${data.mac}\n` + // Ya no necesita '|| N/A' aquí
+                `*Router:* ${data.router}\n` + // Ya no necesita '|| N/A' aquí
                 `*Precinto:* ${data.precinto || 'N/A'}\n` +
                 `*ONU PON:* ${data.onu_pon || 'N/A'}\n` +
-                `*Router:* ${data.router || 'N/A'}\n` +
-                `*MAC:* ${data.mac || 'N/A'}\n` +
                 `*Instalación:* ${data.estado_instalacion || 'N/A'}\n` +
                 `*PLAN:* ${data.plan_contratado || 'N/A'}\n` +
                 `*V. descarga:* ${data.velocidad_descarga_mbps || 'N/A'}\n` +
@@ -203,11 +206,11 @@
                 `*Potencia Cliente:* ${data.potencia_cliente || 'N/A'}\n` +
                 `*Metraje utilizado:* ${data.metraje_utilizado_m || 'N/A'}\n` +
                 `*Metraje desechado:* ${data.metraje_desechado_m || 'N/A'}\n` +
+                `*Tensores utilizados:* ${data.tensores_utilizados || 'N/A'}\n` +
                 `*Técnico 1:* ${data.tecnico_1 || 'N/A'}\n` +
                 `*Técnico 2:* ${data.tecnico_2 || 'N/A'}`;
         };
 
-        // Lógica de acceso por contraseña
         const passwordForm = document.getElementById('password-form');
         const passwordContainer = document.getElementById('password-container');
         const formContainer = document.getElementById('form-container');
@@ -218,7 +221,6 @@
                 passwordContainer.style.display = 'none';
                 formContainer.style.display = 'block';
 
-                // Inicializar fecha y hora aquí una vez que se accede al formulario
                 const fechaInput = document.getElementById('fecha_reporte');
                 const horaInput = document.getElementById('hora_reporte');
                 const ahora = new Date();
@@ -228,14 +230,13 @@
                 fechaInput.value = ahoraLocal.toISOString().split('T')[0];
                 horaInput.value = ahoraLocal.toTimeString().split(' ')[0].substring(0, 5);
 
-                // Configura la integración de WhatsApp para 'reporteForm' una vez que sea visible
                 setupWhatsAppIntegration(
                     'reporteForm',
                     '/api/reportes/instalacion',
                     buildReporteMessage,
                     {
-                        resetFormOnSuccess: true, // Reiniciar el formulario después de enviar WhatsApp
-                        postResetCallback: () => { // Callback para restablecer fecha/hora después del reset
+                        resetFormOnSuccess: true,
+                        postResetCallback: () => {
                             const ahora = new Date();
                             const offset = ahora.getTimezoneOffset();
                             const ahoraLocal = new Date(ahora.getTime() - (offset * 60 * 1000));
@@ -251,7 +252,6 @@
             }
         });
         
-        // Lógica específica para el campo precinto
         document.getElementById('precinto').addEventListener('input', (e) => {
             e.target.value = e.target.value.replace(/\D/g, '');
         });
