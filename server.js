@@ -46,13 +46,26 @@ app.post('/api/solicitudes', async (req, res) => {
 
 // Endpoint para recibir un reporte de instalación
 app.post('/api/reportes/instalacion', async (req, res) => {
-    const reporte = req.body;
-    const { data, error } = await supabase.from('reportes_instalacion').insert(reporte);
+    // El objeto req.body ya contiene todos los datos del formulario,
+    // incluidos los nuevos campos que agregaste.
+
+    console.log('Recibiendo datos para reporte:', req.body); // Útil para depurar
+
+    const { data, error } = await supabase
+        .from('reportes_instalacion') // ¡Asegúrate de que este sea el nombre correcto de tu tabla!
+        .insert([
+            // Simplemente pasamos el objeto completo del body.
+            // Supabase mapeará los campos a las columnas con el mismo nombre.
+            req.body 
+        ])
+        .select(); // El .select() es útil para devolver el registro creado.
+
     if (error) {
-        console.error('Error al insertar reporte de instalación:', error);
-        return res.status(400).json({ error: error.message });
+        console.error('Error guardando el reporte en Supabase:', error);
+        return res.status(500).json({ message: error.message });
     }
-    res.status(201).json({ message: 'Reporte de instalación guardado', data: data });
+
+    res.status(201).json({ message: 'Reporte guardado con éxito!', data });
 });
 
 // Endpoint para recibir un reporte de soporte
