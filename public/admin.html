@@ -52,16 +52,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { keyDisplay.textContent = 'Error'; }
     }
 
-    function updateDisabledOptions() {
-        const assignedTechs = new Set();
-        document.querySelectorAll('.tecnico-select').forEach(s => { if (s.value) assignedTechs.add(s.value); });
-        document.querySelectorAll('.tecnico-select').forEach(select => {
-            for (const option of select.options) {
-                if (option.value) option.disabled = assignedTechs.has(option.value) && option.value !== select.value;
-            }
-        });
-    }
-
     function createTeamControls(equipo = '', tec1 = '', tec2 = '') {
         const tecOptions = masterTechnicians.map(t => `<option value="${t}">${t}</option>`).join('');
         return `<div class="board-controls"><input type="text" class="equipo-name" value="${equipo}" disabled style="font-weight: bold; text-align: center; border: none; background: transparent; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box;"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select></div>`;
@@ -111,21 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
-                    .then(() => {
-                        solicitudOriginal.estado_solicitud = (endpoint === '/api/planificacion/assign') ? 'Planificada' : 'Pendiente';
-                        if (endpoint === '/api/planificacion/assign') {
-                            solicitudOriginal.equipo = body.equipo;
-                            solicitudOriginal.tecnico_1 = body.tecnico1;
-                            solicitudOriginal.tecnico_2 = body.tecnico2;
-                        }
-                        el.innerHTML = createCardHTML(solicitudOriginal);
-                        updateDisabledOptions();
-                    })
-                    .catch(err => { alert(err.message); source.appendChild(el); })
+                    .then(() => loadBoardForDate(dateSelector.value)) // Recargamos para asegurar 100% consistencia
+                    .catch(err => { alert(err.message); loadBoardForDate(dateSelector.value); })
                     .finally(() => { el.style.opacity = '1'; });
             }
         });
-        updateDisabledOptions();
     }
     
     function loadBoardForDate(dateString) {
@@ -163,12 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
-    
-    boardContainer.addEventListener('change', e => {
-        if (e.target.matches('.board-controls select')) {
-            updateDisabledOptions();
-        }
-    });
 });
 </script>
 
