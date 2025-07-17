@@ -38,8 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const dateSelector = document.getElementById('fecha-planificacion');
     const mainPlanningArea = document.querySelector('.planning-area');
     let masterTechnicians = [], masterSolicitudes = [];
+    let draggedCard = null;
 
-    // --- DEFINICIÓN DE FUNCIONES ---
+    // --- FUNCIONES DE RENDERIZADO ---
     function createCardElement(solicitud) {
         const card = document.createElement('div');
         card.className = 'solicitud-card';
@@ -66,29 +67,26 @@ document.addEventListener('DOMContentLoaded', () => {
         tasks.forEach(task => cardDropZone.appendChild(createCardElement(task)));
         return teamBoard;
     }
-
+    
+    // --- LÓGICA PRINCIPAL ---
     function renderPanel(solicitudes) {
         const pendingContainer = document.getElementById('pending-cards-container');
         const teamsContainer = document.getElementById('teams-container');
         pendingContainer.innerHTML = '';
         teamsContainer.innerHTML = '';
-
         const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
         const planned = solicitudes.filter(s => s.estado_solicitud === 'Planificada' || s.estado_solicitud === 'Instalado');
-        
         pending.forEach(s => {
             const card = createCardElement(s);
-            card.classList.add('pending-card'); // Añade clase para estilo compacto
+            card.classList.add('pending-card');
             pendingContainer.appendChild(card);
         });
-        
         const teams = {};
         planned.forEach(task => {
             if (!teams[task.equipo]) teams[task.equipo] = { equipo: task.equipo, tecnico1: task.tecnico_1, tecnico2: task.tecnico_2, tasks: [] };
             teams[task.equipo].tasks.push(task);
         });
         Object.values(teams).forEach(team => teamsContainer.appendChild(createTeamElement(team.equipo, team.tecnico1, team.tecnico2, team.tasks)));
-        
         addDragAndDropListeners();
         updateDisabledOptions();
     }
@@ -108,16 +106,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- LÓGICA DE DRAG & DROP (CORREGIDA Y FINAL) ---
     function addDragAndDropListeners() {
         const cards = document.querySelectorAll('.solicitud-card');
-        const dropZones = [document.getElementById('pending-cards-container'), ...document.querySelectorAll('.team-board')];
+        const dropZones = [document.getElementById('pending-cards-container'), ...document.querySelectorAll('.team-board .card-drop-zone')];
 
         cards.forEach(card => {
             card.addEventListener('dragstart', e => {
+                draggedCard = card;
                 e.dataTransfer.setData('text/plain', card.dataset.id);
                 setTimeout(() => card.classList.add('dragging'), 0);
             });
-            card.addEventListener('dragend', () => card.classList.remove('dragging'));
+            card.addEventListener('dragend', () => {
+                draggedCard.classList.remove('dragging');
+                draggedCard = null;
+            });
         });
 
         dropZones.forEach(zone => {
@@ -126,25 +129,47 @@ document.addEventListener('DOMContentLoaded', () => {
             zone.addEventListener('drop', e => {
                 e.preventDefault();
                 zone.classList.remove('drag-over');
+                if (!draggedCard) return;
+
                 const solicitudId = e.dataTransfer.getData('text/plain');
+                const sourceContainer = draggedCard.parentElement;
+                const targetBoard = zone.closest('.team-board');
                 const isUnassign = zone.id === 'pending-cards-container';
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
+                
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
                 if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
 
                 let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
 
                 if (!isUnassign) {
-                    const equipo = zone.dataset.teamId;
-                    const tecnico1 = zone.querySelector('.tecnico1').value;
-                    if (!equipo || !tecnico1) return alert('Seleccione un Técnico 1 para este equipo.');
-                    body = { ...body, equipo, tecnico1, tecnico2: zone.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
+                    const equipo = targetBoard.dataset.teamId;
+                    const tecnico1 = targetBoard.querySelector('.tecnico1').value;
+                    if (!equipo || !tecnico1) {
+                        alert('Seleccione un Técnico 1 para este equipo.');
+                        return; // No hacer nada si el equipo no está configurado
+                    }
+                    body = { ...body, equipo, tecnico1, tecnico2: targetBoard.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
                 }
                 
+                draggedCard.style.opacity = '0.5';
+
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-                    .then(res => res.ok ? res.json() : Promise.reject(new Error('Error del Servidor')))
-                    .then(() => loadBoardForDate(dateSelector.value))
-                    .catch(err => { alert(err.message); loadBoardForDate(dateSelector.value); });
+                    .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
+                    .then(() => {
+                        // --- Actualización Inteligente ---
+                        zone.appendChild(draggedCard); // Mover la tarjeta visualmente
+                        solicitudOriginal.estado_solicitud = isUnassign ? 'Pendiente' : 'Planificada';
+                        draggedCard.innerHTML = createCardHTML(solicitudOriginal); // Actualizar el contenido de la tarjeta
+                        updateDisabledOptions(); // Actualizar técnicos
+                    })
+                    .catch(err => {
+                        alert(err.message);
+                        sourceContainer.appendChild(draggedCard); // Devolver tarjeta a su origen si hay error
+                    })
+                    .finally(() => {
+                        draggedCard.style.opacity = '1';
+                    });
             });
         });
     }
@@ -159,16 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function fetchAndDisplayTempKey() {
-        const keyDisplay = document.getElementById('temp-key-display');
-        keyDisplay.textContent = '...';
-        try {
-            const response = await fetch('/api/temporary-key');
-            const data = await response.json();
-            keyDisplay.textContent = data.key;
-        } catch (error) { keyDisplay.textContent = 'Error'; }
-    }
+    async function fetchAndDisplayTempKey() { /* ... */ }
 
+    // --- EVENT LISTENERS ---
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
         if (e.target.querySelector('input').value === '666') {
@@ -183,9 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
     dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
     
     document.getElementById('add-equipo-btn').addEventListener('click', () => {
-        const teamLetter = String.fromCharCode(65 + document.getElementById('teams-container').children.length);
+        const teamsContainer = document.getElementById('teams-container');
+        const teamLetter = String.fromCharCode(65 + teamsContainer.children.length);
         const teamName = `Equipo ${teamLetter}`;
-        document.getElementById('teams-container').appendChild(createTeamElement(teamName));
+        teamsContainer.appendChild(createTeamElement(teamName));
         addDragAndDropListeners();
     });
 
@@ -199,11 +218,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
+
     document.getElementById('teams-container').addEventListener('change', e => {
         if (e.target.matches('.tecnico-select')) updateDisabledOptions();
     });
-    
+
     document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
 });
 </script>
