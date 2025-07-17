@@ -33,12 +33,14 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- REFERENCIAS Y VARIABLES ---
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const mainPlanningArea = document.querySelector('.planning-area');
     let masterTechnicians = [], masterSolicitudes = [];
     let draggedCard = null;
 
+    // --- FUNCIONES DE RENDERIZADO ---
     function createCardElement(solicitud) {
         const card = document.createElement('div');
         card.className = 'solicitud-card';
@@ -62,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
         teamBoard.innerHTML = `<div class="board-title-container"><h3>${equipo.nombre_equipo}</h3><button class="delete-board-btn" title="Eliminar equipo">🗑️</button></div><div class="board-controls"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select></div><div class="card-drop-zone"></div>`;
         if (equipo.tecnico_1) teamBoard.querySelector('.tecnico1').value = equipo.tecnico_1;
         if (equipo.tecnico_2) teamBoard.querySelector('.tecnico2').value = equipo.tecnico_2;
+        const cardDropZone = teamBoard.querySelector('.card-drop-zone');
+        const plannedTasks = masterSolicitudes.filter(s => s.equipo === equipo.nombre_equipo);
+        plannedTasks.forEach(task => cardDropZone.appendChild(createCardElement(task)));
         return teamBoard;
     }
 
@@ -71,18 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingContainer.innerHTML = '';
         teamsContainer.innerHTML = '';
         const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
-        const planned = solicitudes.filter(s => s.estado_solicitud === 'Planificada' || s.estado_solicitud === 'Instalado');
-        pending.forEach(s => {
-            const card = createCardElement(s);
-            pendingContainer.appendChild(card);
-        });
-        equipos.forEach(equipo => {
-            const teamElement = createTeamElement(equipo);
-            const plannedTasks = planned.filter(s => s.equipo === equipo.nombre_equipo);
-            const dropZone = teamElement.querySelector('.card-drop-zone');
-            plannedTasks.forEach(task => dropZone.appendChild(createCardElement(task)));
-            teamsContainer.appendChild(teamElement);
-        });
+        pending.forEach(s => pendingContainer.appendChild(createCardElement(s)));
+        equipos.forEach(equipo => teamsContainer.appendChild(createTeamElement(equipo)));
         addDragAndDropListeners();
         updateDisabledOptions();
     }
@@ -123,13 +118,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 zone.classList.remove('drag-over');
                 if (!draggedCard) return;
-                const sourceContainer = draggedCard.parentElement.closest('.pending-cards-wrapper, .team-board');
                 const solicitudId = e.dataTransfer.getData('text/plain');
                 const isUnassign = zone.id === 'pending-cards-container';
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
                 if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
-                let body = { ...solicitudOriginal };
+                let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
                 if (!isUnassign) {
                     const teamBoard = zone.closest('.team-board');
                     const equipo = teamBoard.dataset.teamName;
@@ -140,9 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(res => res.ok ? res.json() : Promise.reject(new Error('Error del Servidor')))
                     .then(() => loadBoardForDate(dateSelector.value))
-                    .catch(err => {
-                        alert(err.message);
-                    });
+                    .catch(err => { alert(err.message); loadBoardForDate(dateSelector.value); });
             });
         });
     }
