@@ -21,6 +21,7 @@ const KEY_VALIDITY_DURATION = 12 * 60 * 60 * 1000;
 function generateTemporaryKey() { return String(randomInt(1000, 9999)).padStart(4, '0'); }
 
 // --- ENDPOINTS ---
+
 app.post('/api/solicitudes', async (req, res) => {
   const solicitud = req.body;
   solicitud.estado_solicitud = 'Pendiente';
@@ -63,8 +64,7 @@ app.post('/api/reportes/instalacion', async (req, res) => {
 app.get('/api/temporary-key', (req, res) => {
     const currentTime = Date.now();
     if (currentTime - keyGenerationTime > KEY_VALIDITY_DURATION) {
-        temporaryKey = generateTemporaryKey();
-        keyGenerationTime = currentTime;
+        temporaryKey = generateTemporaryKey(); keyGenerationTime = currentTime;
     }
     res.json({ key: temporaryKey });
 });
@@ -76,6 +76,8 @@ app.post('/api/validate-temporary-key', (req, res) => {
 });
 
 // --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR ---
+
+// <<< ENDPOINT RECONSTRUIDO PARA SER MÁS ROBUSTO >>>
 app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, pendientesRes, planificadasRes] = await Promise.all([
@@ -84,7 +86,7 @@ app.get('/api/planificacion/:date', async (req, res) => {
         supabase.from('planificaciones').select('*').eq('fecha_asignada', date)
     ]);
     if (tecnicosRes.error || pendientesRes.error || planificadasRes.error) {
-        return res.status(500).json({ message: "Error al cargar datos del panel" });
+        return res.status(500).json({ message: "Error al cargar datos del panel", error: tecnicosRes.error || pendientesRes.error || planificadasRes.error });
     }
     res.json({
         technicians: tecnicosRes.data,
@@ -94,37 +96,22 @@ app.get('/api/planificacion/:date', async (req, res) => {
 });
 
 app.post('/api/planificacion/assign', async (req, res) => {
-    // req.body ahora contiene todos los datos de la tarjeta
-    const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada } = req.body;
-
-    // 1. Preparamos el objeto completo para guardar en 'planificaciones'
-    // El 'onConflict' se asegura de que si se reasigna, se actualice en lugar de crear un duplicado.
-    const { error: upsertError } = await supabase
-        .from('planificaciones')
-        .upsert({ 
-            ...req.body, // Guardamos todos los datos de la tarjeta
-            estado_asignacion: 'Asignada'
-        }, { onConflict: 'solicitud_id' });
-    
-    if (upsertError) {
-        console.error('Error en upsert de planificación:', upsertError);
-        return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
-    }
-
-    // 2. Actualizamos el estado en la tabla 'solicitudes'
-    const { error: updateError } = await supabase.from('solicitudes').update({ 
-        estado_solicitud: 'Planificada', 
-        equipo, 
-        tecnico_1: tecnico1, 
-        tecnico_2: tecnico2 
-    }).eq('id', solicitud_id);
-    
-    if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
-        return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
-    }
-
+    const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, ...solicitudData } = req.body;
+    const { error: upsertError } = await supabase.from('planificaciones').upsert({ ...solicitudData, solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+    if (upsertError) return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Planificada', equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
+    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     res.json({ result: 'success', message: 'Tarea planificada con éxito.' });
+});
+
+app.post('/api/planificacion/unassign', async (req, res) => {
+    const { solicitud_id } = req.body;
+    if (!solicitud_id) return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
+    const { error: deleteError } = await supabase.from('planificaciones').delete().eq('solicitud_id', solicitud_id);
+    if (deleteError) return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
+    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente', equipo: null, tecnico_1: null, tecnico_2: null }).eq('id', solicitud_id);
+    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
+    res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
 
 // --- INICIAR EL SERVIDOR ---
