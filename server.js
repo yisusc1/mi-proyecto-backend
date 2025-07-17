@@ -140,9 +140,17 @@ app.put('/api/equipos/:id', async (req, res) => {
 
 app.delete('/api/equipos/:id', async (req, res) => {
     const { id } = req.params;
-    const { error } = await supabase.from('equipos').delete().eq('id', id);
-    if (error) { console.error('>>> ERROR AL ELIMINAR EQUIPO:', error); return res.status(400).json({ error: error.message }); }
-    res.json({ message: 'Equipo eliminado con éxito.' });
+    const { data: equipo } = await supabase.from('equipos').select('nombre_equipo').eq('id', id).single();
+    if (!equipo) return res.status(404).json({error: "Equipo no encontrado"});
+    const { data: planificaciones } = await supabase.from('planificaciones').select('solicitud_id').eq('equipo', equipo.nombre_equipo);
+    const idsToUpdate = planificaciones.map(p => p.solicitud_id);
+    if (idsToUpdate.length > 0) {
+        await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente', equipo: null, tecnico_1: null, tecnico_2: null }).in('id', idsToUpdate);
+        await supabase.from('planificaciones').delete().in('solicitud_id', idsToUpdate);
+    }
+    const { error: deleteError } = await supabase.from('equipos').delete().eq('id', id);
+    if (deleteError) { console.error('>>> ERROR AL ELIMINAR EQUIPO:', deleteError); return res.status(400).json({ error: deleteError.message }); }
+    res.json({ message: 'Equipo eliminado y tareas devueltas a pendientes.' });
 });
 
 app.listen(port, '0.0.0.0', () => {
