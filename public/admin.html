@@ -28,13 +28,11 @@
 <script src="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- REFERENCIAS Y VARIABLES ---
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const boardContainer = document.getElementById('kanban-board-container');
     let kanban, masterTechnicians = [], masterSolicitudes = [];
 
-    // --- DEFINICIÓN DE FUNCIONES ---
     function createCardHTML(solicitud) {
         const telefonos = [solicitud.contacto_1, solicitud.contacto_2].filter(Boolean).join(' / ');
         const ubicacion = [solicitud.ubicacion, solicitud.municipio, solicitud.sector, solicitud.calle, solicitud.casa].filter(Boolean).join(', ');
@@ -79,78 +77,53 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
     
-    // <<< LÓGICA DE dropEl CORREGIDA Y FINAL >>>
-    const dropEl = function (el, target, source) {
-        el.style.opacity = '0.5';
-        const solicitudId = el.dataset.eid;
-        const targetBoardEl = target.closest('.kanban-board');
-        const sourceBoardEl = source.closest('.kanban-board');
-
-        if (!targetBoardEl) { el.style.opacity = '1'; return; }
-
-        const endpoint = targetBoardEl.dataset.id === 'pendientes' ? '/api/planificacion/unassign' : '/api/planificacion/assign';
-        const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
-
-        if (!solicitudOriginal) {
-            alert('Error: Datos originales no encontrados.');
-            source.appendChild(el);
-            el.style.opacity = '1';
-            return;
-        }
-
-        let body = { ...solicitudOriginal };
-
-        if (endpoint === '/api/planificacion/assign') {
-            const controls = targetBoardEl.querySelector('.board-controls');
-            const equipo = controls.querySelector('.equipo-name').value;
-            const tecnico1 = controls.querySelector('.tecnico-select.tecnico1').value;
-            if (!equipo || !tecnico1) {
-                alert('Seleccione un Técnico 1 para este equipo.');
-                source.appendChild(el);
-                el.style.opacity = '1';
-                return;
-            }
-            body = { ...body, equipo, tecnico1, tecnico2: controls.querySelector('.tecnico-select.tecnico2').value, fecha_asignada: dateSelector.value };
-        }
-
-        fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-            .then(res => {
-                if (!res.ok) throw new Error('Error del Servidor al guardar.');
-                return res.json();
-            })
-            .then(() => {
-                // --- Actualización Inteligente (sin recarga) ---
-                // 1. Actualizamos el estado en nuestra lista local de datos
-                solicitudOriginal.estado_solicitud = (endpoint === '/api/planificacion/assign') ? 'Planificada' : 'Pendiente';
-                
-                // 2. Re-dibujamos solo el contenido de la tarjeta que se movió
-                el.innerHTML = createCardHTML(solicitudOriginal);
-                
-                // 3. Actualizamos las listas de técnicos para deshabilitar los ya usados
-                updateDisabledOptions();
-            })
-            .catch(err => {
-                alert(err.message);
-                source.appendChild(el); // Devolvemos la tarjeta a su lugar original si hay un error
-            })
-            .finally(() => {
-                el.style.opacity = '1';
-            });
-    };
-
-    function initializeKanban(pending, planned) {
+    function initializeKanban(solicitudes) {
         boardContainer.innerHTML = '';
+        const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
+        const planned = solicitudes.filter(s => s.estado_solicitud === 'Planificada' || s.estado_solicitud === 'Instalado');
         const pendingBoard = { id: 'pendientes', title: 'Solicitudes Pendientes', item: pending.map(s => ({ id: s.id, title: createCardHTML(s) }))};
         const teams = {};
         planned.forEach(task => {
-            if (!teams[task.equipo]) teams[task.equipo] = { ...task, tasks: [] };
-            teams[task.equipo].tasks.push({ id: task.solicitud_id, title: createCardHTML(task) });
+            if (!teams[task.equipo]) teams[task.equipo] = { equipo: task.equipo, tecnico1: task.tecnico_1, tecnico2: task.tecnico_2, tasks: [] };
+            teams[task.equipo].tasks.push({ id: task.id, title: createCardHTML(task) });
         });
         const teamBoards = Object.values(teams).map(team => ({ id: team.equipo, title: createTeamControls(team.equipo, team.tecnico1, team.tecnico2), item: team.tasks }));
         kanban = new jKanban({
             element: '#kanban-board-container',
             boards: [pendingBoard, ...teamBoards],
-            dropEl: dropEl
+            dropEl: function (el, target, source) {
+                el.style.opacity = '0.5';
+                const solicitudId = el.dataset.eid;
+                const targetBoardEl = target.closest('.kanban-board');
+                if (!targetBoardEl) { el.style.opacity = '1'; return; }
+                const endpoint = targetBoardEl.dataset.id === 'pendientes' ? '/api/planificacion/unassign' : '/api/planificacion/assign';
+                const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
+                if (!solicitudOriginal) { alert('Error: Datos originales no encontrados.'); el.style.opacity = '1'; return; }
+                let body = { ...solicitudOriginal };
+                if (endpoint === '/api/planificacion/assign') {
+                    const controls = targetBoardEl.querySelector('.board-controls');
+                    const equipo = controls.querySelector('.equipo-name').value;
+                    const tecnico1 = controls.querySelector('.tecnico-select.tecnico1').value;
+                    if (!equipo || !tecnico1) {
+                        alert('Seleccione un Técnico 1 para este equipo.'); source.appendChild(el); el.style.opacity = '1'; return;
+                    }
+                    body = { ...body, equipo, tecnico1, tecnico2: controls.querySelector('.tecnico-select.tecnico2').value, fecha_asignada: dateSelector.value };
+                }
+                fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                    .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
+                    .then(() => {
+                        solicitudOriginal.estado_solicitud = (endpoint === '/api/planificacion/assign') ? 'Planificada' : 'Pendiente';
+                        if (endpoint === '/api/planificacion/assign') {
+                            solicitudOriginal.equipo = body.equipo;
+                            solicitudOriginal.tecnico_1 = body.tecnico1;
+                            solicitudOriginal.tecnico_2 = body.tecnico2;
+                        }
+                        el.innerHTML = createCardHTML(solicitudOriginal);
+                        updateDisabledOptions();
+                    })
+                    .catch(err => { alert(err.message); source.appendChild(el); })
+                    .finally(() => { el.style.opacity = '1'; });
+            }
         });
         updateDisabledOptions();
     }
@@ -161,13 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(res => res.ok ? res.json() : Promise.reject('Error de conexión.'))
             .then(data => {
                 masterTechnicians = Array.isArray(data.technicians) ? data.technicians.map(t => t.nombre).sort() : [];
-                masterSolicitudes = [...data.pendingInstallations, ...data.plannedInstallations];
-                initializeKanban(data.pendingInstallations, data.plannedInstallations);
+                masterSolicitudes = data.solicitudes;
+                initializeKanban(data.solicitudes);
             })
             .catch(err => boardContainer.innerHTML = `<p style="color:red; padding: 2rem;">Error al cargar datos: ${err.message}</p>`);
     }
 
-    // --- EVENT LISTENERS ---
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
         if (e.target.querySelector('input').value === '666') {
