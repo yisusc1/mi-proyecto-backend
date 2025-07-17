@@ -94,22 +94,37 @@ app.get('/api/planificacion/:date', async (req, res) => {
 });
 
 app.post('/api/planificacion/assign', async (req, res) => {
-    const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, ...solicitudData } = req.body;
-    const { error: upsertError } = await supabase.from('planificaciones').upsert({ ...solicitudData, solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
-    if (upsertError) return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Planificada', equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
-    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
-    res.json({ result: 'success', message: 'Tarea planificada con éxito.' });
-});
+    // req.body ahora contiene todos los datos de la tarjeta
+    const { solicitud_id, equipo, tecnico1, tecnico2, fecha_asignada } = req.body;
 
-app.post('/api/planificacion/unassign', async (req, res) => {
-    const { solicitud_id } = req.body;
-    if (!solicitud_id) return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
-    const { error: deleteError } = await supabase.from('planificaciones').delete().eq('solicitud_id', solicitud_id);
-    if (deleteError) return res.status(400).json({ error: `Error al borrar planificación: ${deleteError.message}` });
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente', equipo: null, tecnico_1: null, tecnico_2: null }).eq('id', solicitud_id);
-    if (updateError) return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
-    res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
+    // 1. Preparamos el objeto completo para guardar en 'planificaciones'
+    // El 'onConflict' se asegura de que si se reasigna, se actualice en lugar de crear un duplicado.
+    const { error: upsertError } = await supabase
+        .from('planificaciones')
+        .upsert({ 
+            ...req.body, // Guardamos todos los datos de la tarjeta
+            estado_asignacion: 'Asignada'
+        }, { onConflict: 'solicitud_id' });
+    
+    if (upsertError) {
+        console.error('Error en upsert de planificación:', upsertError);
+        return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
+    }
+
+    // 2. Actualizamos el estado en la tabla 'solicitudes'
+    const { error: updateError } = await supabase.from('solicitudes').update({ 
+        estado_solicitud: 'Planificada', 
+        equipo, 
+        tecnico_1: tecnico1, 
+        tecnico_2: tecnico2 
+    }).eq('id', solicitud_id);
+    
+    if (updateError) {
+        console.error('Error al actualizar solicitud:', updateError);
+        return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
+    }
+
+    res.json({ result: 'success', message: 'Tarea planificada con éxito.' });
 });
 
 // --- INICIAR EL SERVIDOR ---
