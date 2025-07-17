@@ -35,8 +35,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
-    const pendingContainer = document.getElementById('pending-cards-container');
-    const teamsContainer = document.getElementById('teams-container');
+    const mainPlanningArea = document.querySelector('.planning-area');
     let masterTechnicians = [], masterSolicitudes = [];
 
     function createCardElement(solicitud) {
@@ -67,6 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderPanel(solicitudes) {
+        const pendingContainer = document.getElementById('pending-cards-container');
+        const teamsContainer = document.getElementById('teams-container');
         pendingContainer.innerHTML = '';
         teamsContainer.innerHTML = '';
         const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
@@ -83,17 +84,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function loadBoardForDate(dateString) {
-        document.querySelector('.planning-area').innerHTML = '<p>Cargando...</p>';
+        mainPlanningArea.innerHTML = '<p style="padding: 2rem;">Cargando...</p>';
         try {
             const response = await fetch(`/api/planificacion/${dateString}`);
             if (!response.ok) throw new Error('Error de conexión.');
             const data = await response.json();
-            document.querySelector('.planning-area').innerHTML = `<section class="pending-container"><h2>Solicitudes Pendientes</h2><div class="pending-cards-wrapper" id="pending-cards-container"></div></section><section class="teams-grid-wrapper"><div class="teams-container" id="teams-container"></div></section>`;
+            mainPlanningArea.innerHTML = `<section class="pending-container"><h2>Solicitudes Pendientes</h2><div class="pending-cards-wrapper" id="pending-cards-container"></div></section><section class="teams-grid-wrapper"><div class="teams-container" id="teams-container"></div></section>`;
             masterTechnicians = Array.isArray(data.technicians) ? data.technicians.map(t => t.nombre).sort() : [];
             masterSolicitudes = data.solicitudes;
             renderPanel(data.solicitudes);
         } catch (err) {
-            document.querySelector('.planning-area').innerHTML = `<p style="color:red;">Error al cargar datos: ${err.message}</p>`;
+            mainPlanningArea.innerHTML = `<p style="color:red; padding: 2rem;">Error al cargar datos: ${err.message}</p>`;
         }
     }
 
@@ -118,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
                 if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
-                let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
+                let body = { ...solicitudOriginal };
                 if (!isUnassign) {
                     const equipo = zone.dataset.teamId;
                     const tecnico1 = zone.querySelector('.tecnico1').value;
@@ -133,8 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function updateDisabledOptions() { /* ... código sin cambios ... */ }
-    async function fetchAndDisplayTempKey() { /* ... código sin cambios ... */ }
+    function updateDisabledOptions() {
+        const assignedTechs = new Set();
+        document.querySelectorAll('.tecnico-select').forEach(s => { if (s.value) assignedTechs.add(s.value); });
+        document.querySelectorAll('.tecnico-select').forEach(select => {
+            for (const option of select.options) {
+                if (option.value) option.disabled = assignedTechs.has(option.value) && option.value !== select.value;
+            }
+        });
+    }
+
+    async function fetchAndDisplayTempKey() { /* ... */ }
 
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
@@ -150,9 +160,9 @@ document.addEventListener('DOMContentLoaded', () => {
     dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
     
     document.getElementById('add-equipo-btn').addEventListener('click', () => {
-        const teamLetter = String.fromCharCode(65 + teamsContainer.children.length);
+        const teamLetter = String.fromCharCode(65 + document.getElementById('teams-container').children.length);
         const teamName = `Equipo ${teamLetter}`;
-        teamsContainer.appendChild(createTeamElement(teamName));
+        document.getElementById('teams-container').appendChild(createTeamElement(teamName));
         addDragAndDropListeners();
     });
 
