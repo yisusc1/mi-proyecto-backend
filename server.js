@@ -18,7 +18,6 @@ let keyGenerationTime = Date.now();
 const KEY_VALIDITY_DURATION = 12 * 60 * 60 * 1000;
 function generateTemporaryKey() { return String(randomInt(1000, 9999)).padStart(4, '0'); }
 
-// --- ENDPOINTS ---
 app.post('/api/solicitudes', async (req, res) => {
   const solicitud = req.body;
   solicitud.estado_solicitud = 'Pendiente';
@@ -77,8 +76,7 @@ app.get('/api/tecnicos', async (req, res) => {
   res.json(data);
 });
 
-// --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR ---
-app.get('/api/planificacion/:date(\\d{4}-\\d{2}-\\d{2})', async (req, res) => {
+app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, solicitudesRes, equiposRes] = await Promise.all([
         supabase.from('tecnicos').select('nombre'),
@@ -86,7 +84,7 @@ app.get('/api/planificacion/:date(\\d{4}-\\d{2}-\\d{2})', async (req, res) => {
         supabase.from('equipos').select('*').eq('fecha', date)
     ]);
     if (tecnicosRes.error || solicitudesRes.error || equiposRes.error) {
-        return res.status(500).json({ message: "Error al cargar datos del panel" });
+        return res.status(500).json({ message: "Error al cargar datos del panel", error: tecnicosRes.error || solicitudesRes.error || equiposRes.error });
     }
     res.json({
         technicians: tecnicosRes.data,
@@ -147,7 +145,6 @@ app.delete('/api/equipos/:id', async (req, res) => {
     res.json({ message: 'Equipo eliminado con éxito.' });
 });
 
-// --- INICIAR EL SERVIDOR ---
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
 });
