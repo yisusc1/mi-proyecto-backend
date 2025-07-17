@@ -155,11 +155,16 @@ app.put('/api/equipos/:id', async (req, res) => {
     res.json(data[0]);
 });
 
-app.delete('/api/equipos/:id', async (req, res) => {
-    const { id } = req.params;
-    const { error } = await supabase.from('equipos').delete().eq('id', id);
-    if (error) return res.status(400).json({ error: error.message });
-    res.json({ message: 'Equipo eliminado con éxito.' });
+// Crea un nuevo equipo vacío
+app.post('/api/equipos', async (req, res) => {
+    const { nombre_equipo, fecha } = req.body;
+    const { data, error } = await supabase.from('equipos').insert({ nombre_equipo, fecha }).select();
+    if (error) {
+        // Esta línea nos mostrará el error exacto en los logs de Render
+        console.error('>>> ERROR AL CREAR EQUIPO:', error); 
+        return res.status(400).json({ error: error.message });
+    }
+    res.status(201).json(data[0]);
 });
 
 
