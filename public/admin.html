@@ -66,12 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createTeamControls(equipo = '', tec1 = '', tec2 = '') {
         const tecOptions = masterTechnicians.map(t => `<option value="${t}">${t}</option>`).join('');
-        const controlsDiv = document.createElement('div');
-        controlsDiv.className = 'board-controls';
-        controlsDiv.innerHTML = `<input type="text" class="equipo-name" value="${equipo}" disabled style="font-weight: bold; text-align: center; border: none; background: transparent; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box;"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select>`;
-        if (tec1) controlsDiv.querySelector('.tecnico1').value = tec1;
-        if (tec2) controlsDiv.querySelector('.tecnico2').value = tec2;
-        return controlsDiv.outerHTML;
+        return `<div class="board-controls"><input type="text" class="equipo-name" value="${equipo}" disabled style="font-weight: bold; text-align: center; border: none; background: transparent; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box;"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select></div>`;
     }
     
     function getNextTeamLetter() {
@@ -84,6 +79,65 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
     
+    // <<< LÓGICA DE dropEl CORREGIDA Y FINAL >>>
+    const dropEl = function (el, target, source) {
+        el.style.opacity = '0.5';
+        const solicitudId = el.dataset.eid;
+        const targetBoardEl = target.closest('.kanban-board');
+        const sourceBoardEl = source.closest('.kanban-board');
+
+        if (!targetBoardEl) { el.style.opacity = '1'; return; }
+
+        const endpoint = targetBoardEl.dataset.id === 'pendientes' ? '/api/planificacion/unassign' : '/api/planificacion/assign';
+        const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
+
+        if (!solicitudOriginal) {
+            alert('Error: Datos originales no encontrados.');
+            source.appendChild(el);
+            el.style.opacity = '1';
+            return;
+        }
+
+        let body = { ...solicitudOriginal };
+
+        if (endpoint === '/api/planificacion/assign') {
+            const controls = targetBoardEl.querySelector('.board-controls');
+            const equipo = controls.querySelector('.equipo-name').value;
+            const tecnico1 = controls.querySelector('.tecnico-select.tecnico1').value;
+            if (!equipo || !tecnico1) {
+                alert('Seleccione un Técnico 1 para este equipo.');
+                source.appendChild(el);
+                el.style.opacity = '1';
+                return;
+            }
+            body = { ...body, equipo, tecnico1, tecnico2: controls.querySelector('.tecnico-select.tecnico2').value, fecha_asignada: dateSelector.value };
+        }
+
+        fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            .then(res => {
+                if (!res.ok) throw new Error('Error del Servidor al guardar.');
+                return res.json();
+            })
+            .then(() => {
+                // --- Actualización Inteligente (sin recarga) ---
+                // 1. Actualizamos el estado en nuestra lista local de datos
+                solicitudOriginal.estado_solicitud = (endpoint === '/api/planificacion/assign') ? 'Planificada' : 'Pendiente';
+                
+                // 2. Re-dibujamos solo el contenido de la tarjeta que se movió
+                el.innerHTML = createCardHTML(solicitudOriginal);
+                
+                // 3. Actualizamos las listas de técnicos para deshabilitar los ya usados
+                updateDisabledOptions();
+            })
+            .catch(err => {
+                alert(err.message);
+                source.appendChild(el); // Devolvemos la tarjeta a su lugar original si hay un error
+            })
+            .finally(() => {
+                el.style.opacity = '1';
+            });
+    };
+
     function initializeKanban(pending, planned) {
         boardContainer.innerHTML = '';
         const pendingBoard = { id: 'pendientes', title: 'Solicitudes Pendientes', item: pending.map(s => ({ id: s.id, title: createCardHTML(s) }))};
@@ -96,32 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kanban = new jKanban({
             element: '#kanban-board-container',
             boards: [pendingBoard, ...teamBoards],
-            dropEl: function (el, target, source) {
-                el.style.opacity = '0.5';
-                const solicitudId = el.dataset.eid;
-                const targetBoardEl = target.closest('.kanban-board');
-                if (!targetBoardEl) { el.style.opacity = '1'; return; }
-                const endpoint = targetBoardEl.dataset.id === 'pendientes' ? '/api/planificacion/unassign' : '/api/planificacion/assign';
-                const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
-                if (!solicitudOriginal) {
-                    alert('Error: Datos originales no encontrados.'); el.style.opacity = '1'; return;
-                }
-                let body = { ...solicitudOriginal };
-                if (endpoint === '/api/planificacion/assign') {
-                    const controls = targetBoardEl.querySelector('.board-controls');
-                    const equipo = controls.querySelector('.equipo-name').value;
-                    const tecnico1 = controls.querySelector('.tecnico-select.tecnico1').value;
-                    if (!equipo || !tecnico1) {
-                        alert('Seleccione un Técnico 1 para este equipo.'); source.appendChild(el); el.style.opacity = '1'; return;
-                    }
-                    body = { ...body, equipo, tecnico1, tecnico2: controls.querySelector('.tecnico-select.tecnico2').value, fecha_asignada: dateSelector.value };
-                }
-                fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-                    .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
-                    .then(() => loadBoardForDate(dateSelector.value))
-                    .catch(err => { alert(err.message); loadBoardForDate(dateSelector.value); })
-                    .finally(() => { el.style.opacity = '1'; });
-            }
+            dropEl: dropEl
         });
         updateDisabledOptions();
     }
@@ -129,20 +158,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadBoardForDate(dateString) {
          boardContainer.innerHTML = '<p style="padding: 2rem;">Cargando...</p>';
          fetch(`/api/planificacion/${dateString}`)
-            .then(res => res.ok ? res.json() : Promise.reject(new Error('Error de conexión.')))
+            .then(res => res.ok ? res.json() : Promise.reject('Error de conexión.'))
             .then(data => {
                 masterTechnicians = Array.isArray(data.technicians) ? data.technicians.map(t => t.nombre).sort() : [];
-                // <<< LA LÍNEA CORREGIDA ESTÁ AQUÍ >>>
-                // Se asegura de que todos los objetos en masterSolicitudes usen el ID de la solicitud original.
-                masterSolicitudes = [
-                    ...data.pendingInstallations, 
-                    ...data.plannedInstallations.map(p => ({...p, id: p.solicitud_id}))
-                ];
+                masterSolicitudes = [...data.pendingInstallations, ...data.plannedInstallations];
                 initializeKanban(data.pendingInstallations, data.plannedInstallations);
             })
             .catch(err => boardContainer.innerHTML = `<p style="color:red; padding: 2rem;">Error al cargar datos: ${err.message}</p>`);
     }
 
+    // --- EVENT LISTENERS ---
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
         if (e.target.querySelector('input').value === '666') {
