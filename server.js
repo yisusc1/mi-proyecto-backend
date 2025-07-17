@@ -110,23 +110,43 @@ app.get('/api/planificacion/:date', async (req, res) => {
     });
 });
 
+// <<< ENDPOINT MODIFICADO CON LOGS PARA DEPURACIÓN >>>
 app.post('/api/planificacion/assign', async (req, res) => {
+    console.log("--- INTENTO DE ASIGNACIÓN RECIBIDO ---");
+    console.log("DATOS RECIBIDOS:", JSON.stringify(req.body, null, 2));
+
     const assignmentData = req.body;
-    // CORRECCIÓN: Eliminamos el campo 'id' de la solicitud original para evitar conflictos.
-    delete assignmentData.id;
+    delete assignmentData.id; // Evitar conflicto de IDs primarios
+
+    // 1. Intentamos guardar en la tabla 'planificaciones'
     const { error: upsertError } = await supabase
         .from('planificaciones')
         .upsert({ ...assignmentData, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+    
     if (upsertError) {
-        console.error('Error en upsert de planificación:', upsertError);
+        // Si hay un error aquí, lo mostraremos en los logs de Render
+        console.error('>>> ¡ERROR FATAL EN UPSERT DE PLANIFICACIÓN!:', upsertError);
         return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
     }
+
+    console.log("--- Planificación guardada con éxito en la tabla 'planificaciones'. ---");
+
+    // 2. Si lo anterior funcionó, actualizamos la tabla 'solicitudes'
     const { tecnico1, tecnico2, equipo, solicitud_id } = assignmentData;
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Planificada', equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
+    const { error: updateError } = await supabase.from('solicitudes').update({ 
+        estado_solicitud: 'Planificada', 
+        equipo, 
+        tecnico_1: tecnico1, 
+        tecnico_2: tecnico2 
+    }).eq('id', solicitud_id);
+    
     if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
+        // Si hay un error aquí, también lo mostraremos
+        console.error('>>> ¡ERROR FATAL AL ACTUALIZAR LA SOLICITUD ORIGINAL!:', updateError);
         return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     }
+    
+    console.log("--- Solicitud original actualizada con éxito. Proceso completado. ---");
     res.json({ result: 'success', message: 'Tarea planificada con éxito.' });
 });
 
