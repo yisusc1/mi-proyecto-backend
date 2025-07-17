@@ -10,143 +10,35 @@
     --border-radius: 8px;
     --shadow: rgba(9, 30, 66, 0.25) 0px 1px 1px, rgba(9, 30, 66, 0.13) 0px 0px 1px 1px;
 }
-
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: var(--page-bg);
-    color: var(--text-color);
-    margin: 0;
-    overflow-x: hidden;
-    font-size: 14px;
-}
-
-/* Contenedor principal de la aplicación */
-.app-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-}
-
-/* Encabezado */
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 2rem;
-    background-color: var(--card-bg);
-    border-bottom: 1px solid var(--border-color);
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-.app-header h1 {
-    font-size: 1.75rem;
-    margin: 0;
-}
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-.header-controls input, .header-controls button {
-    padding: 0.6rem 1rem;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    font-size: 0.9rem;
-    background-color: #fff;
-}
-.header-controls button {
-    background-color: var(--primary-color);
-    color: white;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--page-bg); color: var(--text-color); margin: 0; font-size: 14px; }
+.app-container { display: flex; flex-direction: column; height: 100vh; }
+.app-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background-color: var(--card-bg); border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem; }
+.app-header h1 { font-size: 1.75rem; margin: 0; }
+.header-controls { display: flex; align-items: center; gap: 1rem; }
+.header-controls input, .header-controls button { padding: 0.6rem 1rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); font-size: 0.9rem; background-color: #fff; }
+.header-controls button { background-color: var(--primary-color); color: white; font-weight: 500; border: none; cursor: pointer; transition: background-color 0.2s; }
 .header-controls button:hover { background-color: #0056b3; }
 .temp-key-box { display: flex; align-items: center; gap: 0.5rem; background: #f0f0f0; padding: 0.5rem 1rem; border-radius: var(--border-radius); }
 .temp-key-box code { font-size: 1.2rem; color: var(--primary-color); font-weight: bold; }
 .temp-key-box button { padding: 0.2rem 0.5rem; font-size: 0.7rem; }
-
-/* Contenedor del Kanban */
-.kanban-wrapper {
-    flex-grow: 1;
-    padding: 2rem;
-    display: flex;
-    gap: 1.5rem;
-    overflow-x: auto;
-    align-items: flex-start; /* Alinea las columnas arriba */
-}
-
-/* Estilos personalizados de jKanban */
-.kanban-container { width: 100%; }
-.kanban-board {
-    background-color: var(--board-bg);
-    border-radius: var(--border-radius);
-    padding: 1rem;
-    min-width: 320px;
-    max-width: 320px;
-}
-.kanban-board header {
-    font-weight: 600;
-    font-size: 1rem;
-    padding: 0.5rem;
-    color: var(--text-light);
-}
-.kanban-item {
-    background-color: var(--card-bg);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    cursor: grab;
-    border-top: 3px solid var(--primary-color);
-}
-.kanban-item strong { font-size: 1rem; }
-.kanban-item small { color: var(--text-light); }
+.kanban-wrapper { flex-grow: 1; padding: 2rem; display: flex; gap: 1.5rem; overflow-x: auto; align-items: flex-start; }
+.kanban-board { background-color: var(--board-bg); border-radius: var(--border-radius); padding: 1rem; min-width: 320px; max-width: 320px; }
+.kanban-board header { font-weight: 600; font-size: 1rem; padding: 0.5rem; color: var(--text-light); }
+.kanban-item { background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); padding: 1rem; margin-bottom: 0.75rem; cursor: grab; }
 .kanban-item:active { cursor: grabbing; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
-.gu-mirror { /* Estilo del fantasma al arrastrar */
-    opacity: 0.8;
-    transform: rotate(3deg);
-}
-
-/* Controles dentro de las tarjetas de equipo */
+.gu-mirror { opacity: 0.8; transform: rotate(3deg); }
 .board-controls { padding: 0.5rem; border: 1px dashed var(--border-color); border-radius: var(--border-radius); margin-bottom: 0.5rem; }
 .board-controls select { width: 100%; padding: 0.5rem; border-radius: var(--border-radius); border: 1px solid #ccc; margin-bottom: 0.5rem; }
-
-/* Pantalla de Login */
+.card-content { font-size: 14px; }
+.card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+.card-detail { margin-bottom: 0.5rem; line-height: 1.4; }
+.card-detail strong { color: var(--text-light); font-weight: 500; margin-right: 0.5rem; }
+.card-status-container { margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); text-align: right; }
+.card-status { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+.status-pending { background-color: #fef3c7; color: #92400e; }
+.status-assigned, .status-planificada { background-color: #dbeafe; color: #1e40af; }
+.status-successful, .status-instalado { background-color: #d1fae5; color: #065f46; }
 .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; }
 .login-box { background: var(--card-bg); padding: 2.5rem; border-radius: var(--border-radius); box-shadow: var(--shadow); text-align: center; width: 350px; }
 .login-box input { display: block; width: 100%; box-sizing: border-box; margin: 1.5rem 0; padding: 0.8rem; }
 .login-box button { width: 100%; padding: 0.8rem; border: none; background: var(--primary-color); color: white; border-radius: var(--border-radius); cursor: pointer; font-size: 1rem; }
-
-/* --- Estilos Adicionales para el Estado en las Tarjetas --- */
-.card-status-container {
-    margin-top: 0.75rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--border-color);
-    text-align: right;
-}
-
-.card-status {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.status-pending {
-    background-color: #fef3c7; /* Amarillo claro */
-    color: #92400e;
-}
-
-.status-assigned {
-    background-color: #dbeafe; /* Azul claro */
-    color: #1e40af;
-}
-
-.status-successful {
-    background-color: #d1fae5; /* Verde claro */
-    color: #065f46;
-}
