@@ -65,13 +65,6 @@ app.post('/api/reportes/instalacion', async (req, res) => {
     return res.status(400).json({ message: 'ID de solicitud no válido.' });
 });
 
-app.post('/api/reportes/soporte', async (req, res) => {
-    const reporte = req.body;
-    const { data, error } = await supabase.from('reportes_soporte').insert(reporte);
-    if (error) { console.error('Error al insertar reporte de soporte:', error); return res.status(400).json({ error: error.message }); }
-    res.status(201).json({ message: 'Reporte de soporte guardado', data: data });
-});
-
 app.get('/api/temporary-key', (req, res) => {
     const currentTime = Date.now();
     if (currentTime - keyGenerationTime > KEY_VALIDITY_DURATION) {
@@ -80,21 +73,13 @@ app.get('/api/temporary-key', (req, res) => {
     res.json({ key: temporaryKey });
 });
 
-app.post('/api/validate-temporary-key', (req, res) => {
-    const { enteredKey } = req.body;
-    if (enteredKey === temporaryKey) res.json({ valid: true });
-    else res.status(401).json({ valid: false, message: 'Clave incorrecta.' });
-});
-
 app.get('/api/tecnicos', async (req, res) => {
-  const { data, error } = await supabase.from('tecnicos').select('*');
+  const { data, error } = await supabase.from('tecnicos').select('nombre');
   if (error) return res.status(400).json({ error: error.message });
   res.json(data);
 });
 
 // --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR ---
-
-// <<< LÍNEA CORREGIDA: Se eliminó la validación compleja de la ruta >>>
 app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, solicitudesRes] = await Promise.all([
@@ -141,32 +126,6 @@ app.post('/api/planificacion/unassign', async (req, res) => {
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
 
-// --- ENDPOINT PARA FACTIBILIDAD ---
-function getDistanceInMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-  const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180; const Δλ = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-app.post('/api/factibilidad', async (req, res) => {
-    const { latitud, longitud } = req.body;
-    if (!latitud || !longitud) return res.status(400).json({ error: 'Faltan coordenadas.' });
-    const { data: naps, error } = await supabase.from('naps').select('*');
-    if (error) { console.error("Error en /api/factibilidad:", error); return res.status(500).json({ error: error.message }); }
-    if (!naps || naps.length === 0) return res.status(404).json({ error: 'No se encontraron NAPs en la base de datos.' });
-    let closestNap = null, minDistance = Infinity;
-    naps.forEach(nap => {
-        const distance = getDistanceInMeters(latitud, longitud, nap.latitud, nap.longitud);
-        if (distance < minDistance) { minDistance = distance; closestNap = nap; }
-    });
-    const esFactible = minDistance <= 250;
-    res.json({ cliente: { latitud, longitud }, nap_cercana: closestNap, distancia_metros: Math.round(minDistance), es_factible: esFactible });
-});
-
-// --- INICIAR EL SERVIDOR ---
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
 });
