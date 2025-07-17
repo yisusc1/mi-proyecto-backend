@@ -106,20 +106,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- LÓGICA DE DRAG & DROP (CORREGIDA Y FINAL) ---
+    // <<< FUNCIÓN CORREGIDA PARA EVITAR ERRORES DE REFERENCIA >>>
     function addDragAndDropListeners() {
         const cards = document.querySelectorAll('.solicitud-card');
         const dropZones = [document.getElementById('pending-cards-container'), ...document.querySelectorAll('.team-board .card-drop-zone')];
 
         cards.forEach(card => {
             card.addEventListener('dragstart', e => {
-                draggedCard = card;
+                draggedCard = card; // Guardamos la referencia global
                 e.dataTransfer.setData('text/plain', card.dataset.id);
                 setTimeout(() => card.classList.add('dragging'), 0);
             });
             card.addEventListener('dragend', () => {
-                draggedCard.classList.remove('dragging');
-                draggedCard = null;
+                if (draggedCard) { // Solo si todavía existe la referencia
+                    draggedCard.classList.remove('dragging');
+                }
+                draggedCard = null; // Limpiamos la referencia global
             });
         });
 
@@ -129,46 +131,40 @@ document.addEventListener('DOMContentLoaded', () => {
             zone.addEventListener('drop', e => {
                 e.preventDefault();
                 zone.classList.remove('drag-over');
-                if (!draggedCard) return;
+                
+                const localDraggedCard = draggedCard; // Creamos una copia local de la referencia
+                if (!localDraggedCard) return; // Si no hay tarjeta, no hacemos nada
 
+                const sourceContainer = localDraggedCard.parentElement;
                 const solicitudId = e.dataTransfer.getData('text/plain');
-                const sourceContainer = draggedCard.parentElement;
-                const targetBoard = zone.closest('.team-board');
                 const isUnassign = zone.id === 'pending-cards-container';
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
-                
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
-                if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
+                
+                if (!solicitudOriginal) { alert('Error: Datos originales no encontrados.'); return; }
 
                 let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
-
                 if (!isUnassign) {
+                    const targetBoard = zone.closest('.team-board');
                     const equipo = targetBoard.dataset.teamId;
                     const tecnico1 = targetBoard.querySelector('.tecnico1').value;
-                    if (!equipo || !tecnico1) {
-                        alert('Seleccione un Técnico 1 para este equipo.');
-                        return; // No hacer nada si el equipo no está configurado
-                    }
+                    if (!equipo || !tecnico1) { alert('Seleccione un Técnico 1 para este equipo.'); return; }
                     body = { ...body, equipo, tecnico1, tecnico2: targetBoard.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
                 }
                 
-                draggedCard.style.opacity = '0.5';
+                localDraggedCard.style.opacity = '0.5';
 
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
-                    .then(() => {
-                        // --- Actualización Inteligente ---
-                        zone.appendChild(draggedCard); // Mover la tarjeta visualmente
-                        solicitudOriginal.estado_solicitud = isUnassign ? 'Pendiente' : 'Planificada';
-                        draggedCard.innerHTML = createCardHTML(solicitudOriginal); // Actualizar el contenido de la tarjeta
-                        updateDisabledOptions(); // Actualizar técnicos
-                    })
+                    .then(() => loadBoardForDate(dateSelector.value))
                     .catch(err => {
                         alert(err.message);
-                        sourceContainer.appendChild(draggedCard); // Devolver tarjeta a su origen si hay error
+                        // Usamos la referencia local para devolver la tarjeta
+                        sourceContainer.appendChild(localDraggedCard);
                     })
                     .finally(() => {
-                        draggedCard.style.opacity = '1';
+                        // Nos aseguramos de que la opacidad se restaure
+                        if(localDraggedCard) localDraggedCard.style.opacity = '1';
                     });
             });
         });
@@ -184,7 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function fetchAndDisplayTempKey() { /* ... */ }
+    async function fetchAndDisplayTempKey() {
+        const keyDisplay = document.getElementById('temp-key-display');
+        keyDisplay.textContent = '...';
+        try {
+            const response = await fetch('/api/temporary-key');
+            const data = await response.json();
+            keyDisplay.textContent = data.key;
+        } catch (error) { keyDisplay.textContent = 'Error'; }
+    }
 
     // --- EVENT LISTENERS ---
     passwordForm.addEventListener('submit', e => {
@@ -222,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('teams-container').addEventListener('change', e => {
         if (e.target.matches('.tecnico-select')) updateDisabledOptions();
     });
-
+    
     document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
 });
 </script>
