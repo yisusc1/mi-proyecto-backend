@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const telefonos = [solicitud.contacto_1, solicitud.contacto_2].filter(Boolean).join(' / ');
         const ubicacion = [solicitud.ubicacion, solicitud.municipio, solicitud.sector, solicitud.calle, solicitud.casa].filter(Boolean).join(', ');
         let statusClass = 'status-pending';
-        if (solicitud.estado_solicitud === 'Planificada') statusClass = 'status-assigned';
-        else if (solicitud.estado_solicitud === 'Instalado') statusClass = 'status-successful';
+        if (solicitud.estado_solicitud === 'Planificada') statusClass = 'status-planificada';
+        else if (solicitud.estado_solicitud === 'Instalado') statusClass = 'status-instalado';
         return `<div class="card-content"><div class="card-title">${solicitud.nombre_cliente||'Sin Nombre'}</div><div class="card-detail"><strong>Teléfono:</strong> <span>${telefonos||'N/A'}</span></div><div class="card-detail"><strong>Ubicación:</strong> <span>${ubicacion||'No especificada'}</span></div><div class="card-detail"><strong>Servicio:</strong> <span>${solicitud.tipo_servicio||'No especificado'}</span></div><div class="card-detail"><strong>Asesor:</strong> <span>${solicitud.asesor||'N/A'}</span></div><div class="card-status-container"><span class="card-status ${statusClass}">${solicitud.estado_solicitud||'Sin Estado'}</span></div></div>`;
     }
     
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         updateDisabledOptions();
                     })
-                    .catch(err => { alert('Error al procesar. Recargando...'); loadBoardForDate(dateSelector.value); })
+                    .catch(err => { alert('Error al procesar la tarea. Recargando...'); loadBoardForDate(dateSelector.value); })
                     .finally(() => { el.style.opacity = '1'; });
             }
         });
@@ -136,8 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
          fetch(`/api/planificacion/${dateString}`)
             .then(res => res.ok ? res.json() : Promise.reject('Error de conexión.'))
             .then(data => {
-                masterTechnicians = data.technicians.map(t => t.nombre).sort();
-                masterSolicitudes = [...data.pendingInstallations, ...data.plannedInstallations.map(p => ({...p, id: p.solicitud_id}))];
+                masterTechnicians = Array.isArray(data.technicians) ? data.technicians.map(t => t.nombre).sort() : [];
+                masterSolicitudes = [...data.pendingInstallations, ...data.plannedInstallations];
                 initializeKanban(data.pendingInstallations, data.plannedInstallations);
             })
             .catch(err => boardContainer.innerHTML = `<p style="color:red; padding: 2rem;">Error al cargar datos: ${err.message}</p>`);
