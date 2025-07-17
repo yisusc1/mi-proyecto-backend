@@ -91,7 +91,8 @@ app.get('/api/planificacion/:date', async (req, res) => {
         supabase.from('solicitudes').select('*').eq('fecha_disponibilidad', date)
     ]);
     if (tecnicosRes.error || solicitudesRes.error) {
-        return res.status(500).json({ message: "Error al cargar datos del panel", error: tecnicosRes.error || solicitudesRes.error });
+        console.error("Error en /api/planificacion/:date:", tecnicosRes.error || solicitudesRes.error);
+        return res.status(500).json({ message: "Error al cargar datos del panel" });
     }
     res.json({
         technicians: tecnicosRes.data,
@@ -99,20 +100,43 @@ app.get('/api/planificacion/:date', async (req, res) => {
     });
 });
 
+// <<< ESTA ES LA FUNCIÓN CORREGIDA Y FINAL >>>
 app.post('/api/planificacion/assign', async (req, res) => {
     const assignmentData = req.body;
+    
+    // El ID de la solicitud original viene en la propiedad 'id'. Lo guardamos.
+    const originalSolicitudId = assignmentData.id;
+
+    // Para la tabla 'planificaciones', el ID debe estar en la columna 'solicitud_id'.
+    assignmentData.solicitud_id = originalSolicitudId;
+    
+    // Eliminamos la propiedad 'id' original para no causar un conflicto al guardar.
     delete assignmentData.id;
-    const { error: upsertError } = await supabase.from('planificaciones').upsert({ ...assignmentData, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+
+    // 1. Guardar/Actualizar en 'planificaciones'.
+    const { error: upsertError } = await supabase
+        .from('planificaciones')
+        .upsert({ ...assignmentData, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+    
     if (upsertError) {
-        console.error('Error en upsert de planificación:', upsertError);
+        console.error('>>> ERROR EN UPSERT DE PLANIFICACIÓN!:', upsertError);
         return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
     }
-    const { tecnico1, tecnico2, equipo, solicitud_id } = assignmentData;
-    const { error: updateError } = await supabase.from('solicitudes').update({ estado_solicitud: 'Planificada', equipo, tecnico_1: tecnico1, tecnico_2: tecnico2 }).eq('id', solicitud_id);
+
+    // 2. Actualizar la tabla 'solicitudes' usando el ID original que guardamos.
+    const { tecnico1, tecnico2, equipo } = assignmentData;
+    const { error: updateError } = await supabase.from('solicitudes').update({ 
+        estado_solicitud: 'Planificada', 
+        equipo, 
+        tecnico_1: tecnico1, 
+        tecnico_2: tecnico2 
+    }).eq('id', originalSolicitudId); // Usamos el ID correcto aquí.
+    
     if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
+        console.error('>>> ERROR AL ACTUALIZAR LA SOLICITUD ORIGINAL!:', updateError);
         return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` });
     }
+
     res.json({ result: 'success', message: 'Tarea planificada con éxito.' });
 });
 
@@ -125,6 +149,9 @@ app.post('/api/planificacion/unassign', async (req, res) => {
     if (updateError) { console.error("Error des-asignando (update):", updateError); return res.status(400).json({ error: `Error al actualizar solicitud: ${updateError.message}` }); }
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
+
+// --- ENDPOINT PARA FACTIBILIDAD ---
+// ... (código sin cambios, debe estar aquí) ...
 
 // --- INICIAR EL SERVIDOR ---
 app.listen(port, '0.0.0.0', () => {
