@@ -126,9 +126,6 @@ app.post('/api/planificacion/unassign', async (req, res) => {
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
 
-// --- ENDPOINT PARA FACTIBILIDAD ---
-// ... (código sin cambios) ...
-
 // --- INICIAR EL SERVIDOR ---
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
