@@ -33,11 +33,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- REFERENCIAS Y VARIABLES ---
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const mainPlanningArea = document.querySelector('.planning-area');
     let masterTechnicians = [], masterSolicitudes = [];
 
+    // --- DEFINICIÓN DE FUNCIONES ---
     function createCardElement(solicitud) {
         const card = document.createElement('div');
         card.className = 'solicitud-card';
@@ -70,15 +72,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const teamsContainer = document.getElementById('teams-container');
         pendingContainer.innerHTML = '';
         teamsContainer.innerHTML = '';
+
         const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
         const planned = solicitudes.filter(s => s.estado_solicitud === 'Planificada' || s.estado_solicitud === 'Instalado');
-        pending.forEach(s => pendingContainer.appendChild(createCardElement(s)));
+        
+        pending.forEach(s => {
+            const card = createCardElement(s);
+            card.classList.add('pending-card'); // Añade clase para estilo compacto
+            pendingContainer.appendChild(card);
+        });
+        
         const teams = {};
         planned.forEach(task => {
             if (!teams[task.equipo]) teams[task.equipo] = { equipo: task.equipo, tecnico1: task.tecnico_1, tecnico2: task.tecnico_2, tasks: [] };
             teams[task.equipo].tasks.push(task);
         });
         Object.values(teams).forEach(team => teamsContainer.appendChild(createTeamElement(team.equipo, team.tecnico1, team.tecnico2, team.tasks)));
+        
         addDragAndDropListeners();
         updateDisabledOptions();
     }
@@ -101,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function addDragAndDropListeners() {
         const cards = document.querySelectorAll('.solicitud-card');
         const dropZones = [document.getElementById('pending-cards-container'), ...document.querySelectorAll('.team-board')];
+
         cards.forEach(card => {
             card.addEventListener('dragstart', e => {
                 e.dataTransfer.setData('text/plain', card.dataset.id);
@@ -108,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             card.addEventListener('dragend', () => card.classList.remove('dragging'));
         });
+
         dropZones.forEach(zone => {
             zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
             zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
@@ -119,13 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
                 if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
-                let body = { ...solicitudOriginal };
+
+                let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
+
                 if (!isUnassign) {
                     const equipo = zone.dataset.teamId;
                     const tecnico1 = zone.querySelector('.tecnico1').value;
                     if (!equipo || !tecnico1) return alert('Seleccione un Técnico 1 para este equipo.');
                     body = { ...body, equipo, tecnico1, tecnico2: zone.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
                 }
+                
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(res => res.ok ? res.json() : Promise.reject(new Error('Error del Servidor')))
                     .then(() => loadBoardForDate(dateSelector.value))
@@ -144,7 +159,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function fetchAndDisplayTempKey() { /* ... */ }
+    async function fetchAndDisplayTempKey() {
+        const keyDisplay = document.getElementById('temp-key-display');
+        keyDisplay.textContent = '...';
+        try {
+            const response = await fetch('/api/temporary-key');
+            const data = await response.json();
+            keyDisplay.textContent = data.key;
+        } catch (error) { keyDisplay.textContent = 'Error'; }
+    }
 
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
@@ -153,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('admin-panel').style.display = 'flex';
             dateSelector.valueAsDate = new Date();
             loadBoardForDate(dateSelector.value);
-            // fetchAndDisplayTempKey();
+            fetchAndDisplayTempKey();
         } else { alert('Clave incorrecta'); }
     });
     
@@ -176,10 +199,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-
+    
     document.getElementById('teams-container').addEventListener('change', e => {
         if (e.target.matches('.tecnico-select')) updateDisabledOptions();
     });
+    
+    document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
 });
 </script>
 
