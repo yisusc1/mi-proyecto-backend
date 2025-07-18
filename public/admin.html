@@ -28,11 +28,13 @@
 <script src="https://cdn.jsdelivr.net/npm/jkanban@1.3.1/dist/jkanban.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- REFERENCIAS Y VARIABLES ---
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const boardContainer = document.getElementById('kanban-board-container');
     let kanban, masterTechnicians = [], masterSolicitudes = [];
 
+    // --- DEFINICIÓN DE FUNCIONES ---
     function createCardHTML(solicitud) {
         const telefonos = [solicitud.contacto_1, solicitud.contacto_2].filter(Boolean).join(' / ');
         const ubicacion = [solicitud.ubicacion, solicitud.municipio, solicitud.sector, solicitud.calle, solicitud.casa].filter(Boolean).join(', ');
@@ -52,19 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) { keyDisplay.textContent = 'Error'; }
     }
 
-    function updateDisabledOptions() {
-        const assignedTechs = new Set();
-        document.querySelectorAll('.tecnico-select').forEach(s => { if (s.value) assignedTechs.add(s.value); });
-        document.querySelectorAll('.tecnico-select').forEach(select => {
-            for (const option of select.options) {
-                if (option.value) option.disabled = assignedTechs.has(option.value) && option.value !== select.value;
-            }
-        });
-    }
-
     function createTeamControls(equipo = '', tec1 = '', tec2 = '') {
         const tecOptions = masterTechnicians.map(t => `<option value="${t}">${t}</option>`).join('');
-        return `<div class="board-title-container"><input type="text" class="equipo-name" value="${equipo}" disabled style="font-weight: bold; text-align: center; border: none; background: transparent; width: 100%;"><button class="delete-board-btn" title="Eliminar equipo">🗑️</button></div><div class="board-controls"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select></div>`;
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'board-controls';
+        controlsDiv.innerHTML = `<input type="text" class="equipo-name" value="${equipo}" disabled style="font-weight: bold; text-align: center; border: none; background: transparent; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box;"><select class="tecnico-select tecnico1"><option value="">Técnico 1</option>${tecOptions}</select><select class="tecnico-select tecnico2"><option value="">Técnico 2</option>${tecOptions}</select>`;
+        if (tec1) controlsDiv.querySelector('.tecnico1').value = tec1;
+        if (tec2) controlsDiv.querySelector('.tecnico2').value = tec2;
+        return controlsDiv.outerHTML;
     }
     
     function getNextTeamLetter() {
@@ -75,24 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!usedTeams.has(potentialTeamName)) return letter;
         }
         return null;
-    }
-
-    function addDeleteListener(boardId) {
-        const boardElement = kanban.findBoard(boardId);
-        if (!boardElement) return;
-        const deleteBtn = boardElement.querySelector('.delete-board-btn');
-        if (deleteBtn) {
-            deleteBtn.addEventListener('click', () => {
-                if (kanban.getBoardElements(boardId).length > 0) {
-                    alert('No se puede eliminar un equipo con tareas asignadas.');
-                    return;
-                }
-                if (confirm(`¿Seguro que quieres eliminar el ${boardId}?`)) {
-                    kanban.removeBoard(boardId);
-                    updateDisabledOptions();
-                }
-            });
-        }
     }
     
     function initializeKanban(solicitudes) {
@@ -113,21 +92,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.style.opacity = '0.5';
                 const solicitudId = el.dataset.eid;
                 const targetBoardEl = target.closest('.kanban-board');
-                if (!targetBoardEl) { el.style.opacity = '1'; source.appendChild(el); return; }
-                
+                if (!targetBoardEl) { el.style.opacity = '1'; return; }
+
                 const endpoint = targetBoardEl.dataset.id === 'pendientes' ? '/api/planificacion/unassign' : '/api/planificacion/assign';
+                
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
+                if (!solicitudOriginal) {
+                    alert('Error: Datos originales no encontrados.');
+                    source.appendChild(el);
+                    el.style.opacity = '1';
+                    return;
+                }
                 
-                if (!solicitudOriginal) { alert('Error: Datos originales no encontrados.'); source.appendChild(el); el.style.opacity = '1'; return; }
-                
+                // <<< CORRECCIÓN CLAVE: Aseguramos que 'solicitud_id' siempre se envíe >>>
                 let body = { ...solicitudOriginal, solicitud_id: solicitudId };
-                
+
                 if (endpoint === '/api/planificacion/assign') {
                     const controls = targetBoardEl.querySelector('.board-controls');
-                    const equipo = targetBoardEl.querySelector('.equipo-name').value;
+                    const equipo = controls.querySelector('.equipo-name').value;
                     const tecnico1 = controls.querySelector('.tecnico-select.tecnico1').value;
                     if (!equipo || !tecnico1) {
-                        alert('Seleccione un Técnico 1 para este equipo.'); source.appendChild(el); el.style.opacity = '1'; return;
+                        alert('Seleccione un Técnico 1 para este equipo.');
+                        source.appendChild(el);
+                        el.style.opacity = '1';
+                        return;
                     }
                     body.equipo = equipo;
                     body.tecnico1 = tecnico1;
@@ -137,26 +125,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                     .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
-                    .then(() => {
-                        solicitudOriginal.estado_solicitud = (endpoint === '/api/planificacion/assign') ? 'Planificada' : 'Pendiente';
-                        if (endpoint === '/api/planificacion/assign') {
-                            solicitudOriginal.equipo = body.equipo;
-                            solicitudOriginal.tecnico_1 = body.tecnico1;
-                            solicitudOriginal.tecnico_2 = body.tecnico2;
-                        } else {
-                            solicitudOriginal.equipo = null;
-                            solicitudOriginal.tecnico_1 = null;
-                            solicitudOriginal.tecnico_2 = null;
-                        }
-                        el.innerHTML = createCardHTML(solicitudOriginal);
-                        updateDisabledOptions();
-                    })
-                    .catch(err => { alert(err.message); source.appendChild(el); })
-                    .finally(() => { el.style.opacity = '1'; });
+                    .then(() => loadBoardForDate(dateSelector.value))
+                    .catch(err => {
+                        alert(err.message);
+                        loadBoardForDate(dateSelector.value);
+                    });
             }
         });
-        kanban.options.boards.forEach(board => addDeleteListener(board.id));
-        updateDisabledOptions();
     }
     
     function loadBoardForDate(dateString) {
@@ -190,21 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!nextLetter) return alert('No hay más letras de equipo disponibles.');
             const teamName = `Equipo ${nextLetter}`;
             kanban.addBoards([{ id: teamName, title: createTeamControls(teamName), item: [] }]);
-            addDeleteListener(teamName);
         }
     });
 
     document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
-    
-    boardContainer.addEventListener('change', e => {
-        if (e.target.matches('.board-controls select')) {
-            updateDisabledOptions();
-        }
-    });
 });
 </script>
 
 </body>
-</html>
-</html>
 </html>
