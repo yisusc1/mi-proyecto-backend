@@ -7,9 +7,11 @@
     <link rel="stylesheet" href="admin-style.css">
 </head>
 <body>
+
 <div id="password-container" class="login-container">
     <div class="login-box"><h1>Panel de Planificación</h1><form id="password-form"><input type="password" id="password" placeholder="Clave de acceso" required><button type="submit">Ingresar</button></form></div>
 </div>
+
 <div id="admin-panel" class="app-container" style="display:none;">
     <header class="app-header">
         <h1>Panel de Planificación</h1>
@@ -28,11 +30,15 @@
         </section>
     </main>
 </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const mainPlanningArea = document.querySelector('.planning-area');
+    const addEquipoBtn = document.getElementById('add-equipo-btn');
+    const refreshKeyBtn = document.getElementById('refresh-key-btn');
+    
     let masterTechnicians = [], masterSolicitudes = [];
     let draggedCard = null;
 
@@ -102,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => card.classList.add('dragging'), 0);
             });
             card.addEventListener('dragend', () => {
-                if(draggedCard) draggedCard.classList.remove('dragging');
+                if (draggedCard) draggedCard.classList.remove('dragging');
                 draggedCard = null;
             });
         });
@@ -113,7 +119,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 zone.classList.remove('drag-over');
                 if (!draggedCard) return;
-                const sourceContainer = draggedCard.parentElement;
+                const localDraggedCard = draggedCard;
+                const sourceContainer = localDraggedCard.parentElement;
                 const solicitudId = e.dataTransfer.getData('text/plain');
                 const isUnassign = zone.id === 'pending-cards-container';
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
@@ -124,13 +131,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     const teamBoard = zone.closest('.team-board');
                     const equipo = teamBoard.dataset.teamName;
                     const tecnico1 = teamBoard.querySelector('.tecnico1').value;
-                    if (!equipo || !tecnico1) return alert('Seleccione un Técnico 1 para este equipo.');
+                    if (!equipo || !tecnico1) { alert('Seleccione un Técnico 1 para este equipo.'); return; }
                     body = { ...body, equipo, tecnico1, tecnico2: teamBoard.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
                 }
+                localDraggedCard.style.opacity = '0.5';
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-                    .then(res => res.ok ? res.json() : Promise.reject(new Error('Error del Servidor')))
-                    .then(() => loadBoardForDate(dateSelector.value))
-                    .catch(err => { alert(err.message); sourceContainer.appendChild(draggedCard); });
+                    .then(res => { if (!res.ok) throw new Error('Error del Servidor'); return res.json(); })
+                    .then(() => {
+                        solicitudOriginal.estado_solicitud = isUnassign ? 'Pendiente' : 'Planificada';
+                        if (isUnassign) {
+                            solicitudOriginal.equipo = null;
+                            solicitudOriginal.tecnico_1 = null;
+                            solicitudOriginal.tecnico_2 = null;
+                        } else {
+                            solicitudOriginal.equipo = body.equipo;
+                            solicitudOriginal.tecnico_1 = body.tecnico1;
+                            solicitudOriginal.tecnico_2 = body.tecnico2;
+                        }
+                        const targetDropZone = isUnassign ? zone : zone.querySelector('.card-drop-zone');
+                        targetDropZone.appendChild(localDraggedCard);
+                        localDraggedCard.innerHTML = createCardHTML(solicitudOriginal);
+                        updateDisabledOptions();
+                    })
+                    .catch(err => {
+                        alert(err.message);
+                        if (sourceContainer) sourceContainer.appendChild(localDraggedCard);
+                    })
+                    .finally(() => { if (localDraggedCard) localDraggedCard.style.opacity = '1'; });
             });
         });
     }
@@ -168,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
     
-    document.getElementById('add-equipo-btn').addEventListener('click', async () => {
+    addEquipoBtn.addEventListener('click', async () => {
         const teamsContainer = document.getElementById('teams-container');
         const teamLetter = String.fromCharCode(65 + teamsContainer.children.length);
         const teamName = `Equipo ${teamLetter}`;
@@ -176,8 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/equipos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre_equipo: teamName, fecha: dateSelector.value }) });
             if (!response.ok) throw new Error('Error al guardar el equipo nuevo.');
             const nuevoEquipo = await response.json();
-            const newTeamElement = createTeamElement(nuevoEquipo);
-            teamsContainer.appendChild(newTeamElement);
+            teamsContainer.appendChild(createTeamElement(nuevoEquipo));
             addDragAndDropListeners();
         } catch (error) { alert(error.message); }
     });
@@ -185,13 +211,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('teams-container').addEventListener('click', async e => {
         if (e.target.classList.contains('delete-board-btn')) {
             const teamBoard = e.target.closest('.team-board');
-            if (teamBoard.querySelector('.solicitud-card')) return alert('No se puede eliminar un equipo con tareas asignadas.');
-            if (confirm(`¿Seguro que quieres eliminar el ${teamBoard.dataset.teamName}?`)) {
-                const equipoId = teamBoard.dataset.equipoId;
-                const response = await fetch(`/api/equipos/${equipoId}`, { method: 'DELETE' });
-                if (response.ok) { teamBoard.remove(); updateDisabledOptions(); } 
-                else { alert('Error al eliminar el equipo.'); }
+            if (teamBoard.querySelector('.solicitud-card')) {
+                const tasks = Array.from(teamBoard.querySelectorAll('.solicitud-card'));
+                if (!confirm(`Este equipo tiene ${tasks.length} tarea(s) asignada(s). ¿Seguro que quieres eliminar el equipo y devolver todas las tareas a "Pendientes"?`)) return;
+                for (const task of tasks) {
+                    await fetch('/api/planificacion/unassign', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ solicitud_id: task.dataset.id }) });
+                }
+            } else {
+                if (!confirm(`¿Seguro que quieres eliminar el ${teamBoard.dataset.teamName}?`)) return;
             }
+            const equipoId = teamBoard.dataset.equipoId;
+            const response = await fetch(`/api/equipos/${equipoId}`, { method: 'DELETE' });
+            if (response.ok) { loadBoardForDate(dateSelector.value); } 
+            else { alert('Error al eliminar el equipo.'); }
         }
     });
 
@@ -206,9 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
+    refreshKeyBtn.addEventListener('click', fetchAndDisplayTempKey);
 });
 </script>
 
 </body>
+</html>
 </html>
