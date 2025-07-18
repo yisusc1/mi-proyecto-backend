@@ -93,7 +93,7 @@ app.get('/api/tecnicos', async (req, res) => {
 });
 
 // --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR ---
-app.get('/api/planificacion/:date(\\d{4}-\\d{2}-\\d{2})', async (req, res) => {
+app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, solicitudesRes] = await Promise.all([
         supabase.from('tecnicos').select('nombre'),
