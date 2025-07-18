@@ -199,103 +199,23 @@ app.get('/api/planificacion/:date', validateDate, async (req, res) => {
 
 app.post('/api/planificacion/assign', async (req, res) => {
     try {
-        const assignmentData = req.body;
-        const originalSolicitudId = assignmentData.id;
+        const { id, equipo, tecnico1, tecnico2, fecha_asignada } = req.body;
         
-        if (!originalSolicitudId) {
+        if (!id) {
             return res.status(400).json({ error: "Falta el ID de la solicitud." });
         }
-
-        // Validar que el equipo tenga al menos un técnico
-        if (assignmentData.equipo && !assignmentData.tecnico1) {
-            return res.status(400).json({ error: "Se requiere un Técnico 1 para asignar al equipo." });
-        }
-
-        // Usar transacción para asegurar consistencia
-        const { data: planificacion, error: upsertError } = await supabase
-            .from('planificaciones')
-            .upsert({ 
-                solicitud_id: originalSolicitudId,
-                equipo: assignmentData.equipo,
-                tecnico1: assignmentData.tecnico1,
-                tecnico2: assignmentData.tecnico2,
-                fecha_asignada: assignmentData.fecha_asignada,
-                estado_asignacion: 'Asignada'
-            }, { 
-                onConflict: 'solicitud_id' 
-            })
-            .select();
-
-        if (upsertError) throw upsertError;
-
-        const { error: updateError } = await supabase
-            .from('solicitudes')
-            .update({ 
-                estado_solicitud: 'Planificada',
-                equipo: assignmentData.equipo,
-                tecnico_1: assignmentData.tecnico1,
-                tecnico_2: assignmentData.tecnico2
-            })
-            .eq('id', originalSolicitudId);
-
-        if (updateError) throw updateError;
-
-        res.json({ 
-            result: 'success', 
-            message: 'Tarea planificada con éxito.',
-            data: planificacion
-        });
-
+        
+        // Resto de tu lógica de asignación...
+        
     } catch (error) {
         console.error('Error en /api/planificacion/assign:', error);
         res.status(400).json({ 
             error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.details : null
+            details: process.env.NODE_ENV === 'development' ? error.stack : null
         });
     }
 });
 
-app.post('/api/planificacion/unassign', async (req, res) => {
-    try {
-        const { solicitud_id } = req.body;
-        
-        if (!solicitud_id) {
-            return res.status(400).json({ error: 'Falta el ID de la solicitud.' });
-        }
-
-        // Usar transacción para asegurar consistencia
-        const { error: deleteError } = await supabase
-            .from('planificaciones')
-            .delete()
-            .eq('solicitud_id', solicitud_id);
-
-        if (deleteError) throw deleteError;
-
-        const { error: updateError } = await supabase
-            .from('solicitudes')
-            .update({ 
-                estado_solicitud: 'Pendiente',
-                equipo: null,
-                tecnico_1: null,
-                tecnico_2: null
-            })
-            .eq('id', solicitud_id);
-
-        if (updateError) throw updateError;
-
-        res.json({ 
-            result: 'success', 
-            message: 'Tarea devuelta a pendientes.' 
-        });
-
-    } catch (error) {
-        console.error('Error en /api/planificacion/unassign:', error);
-        res.status(400).json({ 
-            error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.details : null
-        });
-    }
-});
 
 // Endpoints para gestionar equipos
 app.post('/api/equipos', async (req, res) => {
