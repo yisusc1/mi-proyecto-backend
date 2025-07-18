@@ -288,55 +288,83 @@ document.addEventListener('DOMContentLoaded', () => {
         this.classList.remove('drag-over');
     }
     
-    async function handleDrop(e) {
-        e.preventDefault();
-        this.classList.remove('drag-over');
+    // Reemplaza toda la función handleDrop con esta versión corregida
+async function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    
+    if (!draggedCard) return;
+    
+    try {
+        // Mostrar feedback de carga
+        draggedCard.style.opacity = '0.5';
+        draggedCard.style.pointerEvents = 'none';
         
-        if (!draggedCard) return;
+        const solicitudId = draggedCard.dataset.id;
+        if (!solicitudId) {
+            throw new Error('No se pudo obtener el ID de la solicitud');
+        }
         
-        const solicitudId = e.dataTransfer.getData('text/plain');
         const isUnassign = this.classList.contains('pending-cards-wrapper');
         const targetTeamBoard = this.closest('.team-board');
         
-        try {
-            // Mostrar feedback de carga
-            draggedCard.style.opacity = '0.5';
-            draggedCard.style.pointerEvents = 'none';
-            
-            const body = {
-                id: solicitudId,
-                equipo: isUnassign ? null : targetTeamBoard.dataset.teamName,
-                tecnico1: isUnassign ? null : targetTeamBoard.querySelector('.tecnico1').value,
-                tecnico2: isUnassign ? null : targetTeamBoard.querySelector('.tecnico2').value,
-                fecha_asignada: dateSelector.value
-            };
-            
-            const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            
-            if (!response.ok) throw new Error(await response.text());
-            
-            // Actualizar UI después de éxito
-            loadBoardForDate(dateSelector.value);
-            
-        } catch (error) {
-            console.error('Error en drop:', error);
-            alert(`Error: ${error.message}`);
-            
-            if (sourceContainer) {
+        const body = {
+            id: solicitudId,  // Asegúrate de que el ID se envía correctamente
+            equipo: isUnassign ? null : targetTeamBoard?.dataset.teamName || null,
+            tecnico1: isUnassign ? null : targetTeamBoard?.querySelector('.tecnico1')?.value || null,
+            tecnico2: isUnassign ? null : targetTeamBoard?.querySelector('.tecnico2')?.value || null,
+            fecha_asignada: dateSelector.value
+        };
+        
+        // Validación adicional
+        if (!isUnassign && (!body.equipo || !body.tecnico1)) {
+            throw new Error('Se requiere un equipo y técnico principal para asignar');
+        }
+        
+        const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Error del servidor');
+        }
+        
+        // Recargar todo el panel para mantener consistencia
+        await loadBoardForDate(dateSelector.value);
+        
+    } catch (error) {
+        console.error('Error en drop:', error);
+        alert(`Error: ${error.message}`);
+        
+        // Restaurar la tarjeta a su posición original si es posible
+        if (sourceContainer && draggedCard) {
+            try {
                 sourceContainer.appendChild(draggedCard);
-            }
-        } finally {
-            if (draggedCard) {
                 draggedCard.style.opacity = '1';
                 draggedCard.style.pointerEvents = '';
+            } catch (restoreError) {
+                console.error('Error al restaurar tarjeta:', restoreError);
+                // Si no podemos restaurar, recargamos todo
+                loadBoardForDate(dateSelector.value);
             }
+        } else {
+            // Si no hay sourceContainer, recargamos todo
+            loadBoardForDate(dateSelector.value);
         }
+    } finally {
+        // Limpiar referencias
+        if (draggedCard) {
+            draggedCard.style.opacity = '1';
+            draggedCard.style.pointerEvents = '';
+        }
+        draggedCard = null;
+        sourceContainer = null;
     }
+}
 
     // Función para obtener y mostrar la clave temporal
     async function fetchAndDisplayTempKey() {
