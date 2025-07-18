@@ -33,14 +33,12 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // --- REFERENCIAS Y VARIABLES ---
     const passwordForm = document.getElementById('password-form');
     const dateSelector = document.getElementById('fecha-planificacion');
     const pendingContainer = document.getElementById('pending-cards-container');
     const teamsContainer = document.getElementById('teams-container');
     let masterTechnicians = [], masterSolicitudes = [];
 
-    // --- FUNCIONES DE RENDERIZADO ---
     function createCardElement(solicitud) {
         const card = document.createElement('div');
         card.className = 'solicitud-card';
@@ -55,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return card;
     }
 
-    function createTeamElement(teamName = '', tec1 = '', tec2 = '', tasks = []) {
+    function createTeamElement(teamName, tec1 = '', tec2 = '', tasks = []) {
         const teamBoard = document.createElement('div');
         teamBoard.className = 'team-board';
         teamBoard.dataset.teamId = teamName;
@@ -68,45 +66,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return teamBoard;
     }
 
-    // --- LÓGICA PRINCIPAL ---
     function renderPanel(solicitudes) {
         pendingContainer.innerHTML = '';
         teamsContainer.innerHTML = '';
         const pending = solicitudes.filter(s => s.estado_solicitud === 'Pendiente');
         const planned = solicitudes.filter(s => s.estado_solicitud === 'Planificada' || s.estado_solicitud === 'Instalado');
-        
         pending.forEach(s => pendingContainer.appendChild(createCardElement(s)));
-        
         const teams = {};
         planned.forEach(task => {
             if (!teams[task.equipo]) teams[task.equipo] = { equipo: task.equipo, tecnico1: task.tecnico_1, tecnico2: task.tecnico_2, tasks: [] };
             teams[task.equipo].tasks.push(task);
         });
         Object.values(teams).forEach(team => teamsContainer.appendChild(createTeamElement(team.equipo, team.tecnico1, team.tecnico2, team.tasks)));
-        
         addDragAndDropListeners();
         updateDisabledOptions();
     }
     
     async function loadBoardForDate(dateString) {
-        boardContainer.innerHTML = '<p>Cargando...</p>';
+        document.querySelector('.planning-area').innerHTML = '<p>Cargando...</p>';
         try {
             const response = await fetch(`/api/planificacion/${dateString}`);
             if (!response.ok) throw new Error('Error de conexión.');
             const data = await response.json();
+            document.querySelector('.planning-area').innerHTML = `<section class="pending-container"><h2>Solicitudes Pendientes</h2><div class="pending-cards-wrapper" id="pending-cards-container"></div></section><section class="teams-grid-wrapper"><div class="teams-container" id="teams-container"></div></section>`;
             masterTechnicians = Array.isArray(data.technicians) ? data.technicians.map(t => t.nombre).sort() : [];
             masterSolicitudes = data.solicitudes;
             renderPanel(data.solicitudes);
         } catch (err) {
-            boardContainer.innerHTML = `<p style="color:red;">Error al cargar datos: ${err.message}</p>`;
+            document.querySelector('.planning-area').innerHTML = `<p style="color:red;">Error al cargar datos: ${err.message}</p>`;
         }
     }
 
-    // --- LÓGICA DE DRAG & DROP ---
     function addDragAndDropListeners() {
         const cards = document.querySelectorAll('.solicitud-card');
-        const dropZones = document.querySelectorAll('.pending-cards-wrapper, .team-board');
-
+        const dropZones = [document.getElementById('pending-cards-container'), ...document.querySelectorAll('.team-board')];
         cards.forEach(card => {
             card.addEventListener('dragstart', e => {
                 e.dataTransfer.setData('text/plain', card.dataset.id);
@@ -114,12 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             card.addEventListener('dragend', () => card.classList.remove('dragging'));
         });
-
         dropZones.forEach(zone => {
-            zone.addEventListener('dragover', e => {
-                e.preventDefault();
-                zone.classList.add('drag-over');
-            });
+            zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
             zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
             zone.addEventListener('drop', e => {
                 e.preventDefault();
@@ -129,24 +118,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 const endpoint = isUnassign ? '/api/planificacion/unassign' : '/api/planificacion/assign';
                 const solicitudOriginal = masterSolicitudes.find(s => s.id == solicitudId);
                 if (!solicitudOriginal) return alert('Error: Datos originales no encontrados.');
-
-                let body = { ...solicitudOriginal };
+                let body = { ...solicitudOriginal, solicitud_id: solicitudOriginal.id };
                 if (!isUnassign) {
                     const equipo = zone.dataset.teamId;
                     const tecnico1 = zone.querySelector('.tecnico1').value;
                     if (!equipo || !tecnico1) return alert('Seleccione un Técnico 1 para este equipo.');
                     body = { ...body, equipo, tecnico1, tecnico2: zone.querySelector('.tecnico2').value, fecha_asignada: dateSelector.value };
                 }
-                
                 fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-                    .then(res => res.ok ? res.json() : Promise.reject('Error del Servidor'))
+                    .then(res => res.ok ? res.json() : Promise.reject(new Error('Error del Servidor')))
                     .then(() => loadBoardForDate(dateSelector.value))
                     .catch(err => { alert(err.message); loadBoardForDate(dateSelector.value); });
             });
         });
     }
 
-    // --- EVENT LISTENERS ---
+    function updateDisabledOptions() { /* ... código sin cambios ... */ }
+    async function fetchAndDisplayTempKey() { /* ... código sin cambios ... */ }
+
     passwordForm.addEventListener('submit', e => {
         e.preventDefault();
         if (e.target.querySelector('input').value === '666') {
@@ -154,14 +143,15 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('admin-panel').style.display = 'flex';
             dateSelector.valueAsDate = new Date();
             loadBoardForDate(dateSelector.value);
-            // fetchAndDisplayTempKey(); // Descomentar si se usa la clave rápida
+            // fetchAndDisplayTempKey();
         } else { alert('Clave incorrecta'); }
     });
     
     dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
     
     document.getElementById('add-equipo-btn').addEventListener('click', () => {
-        const teamName = `Equipo ${String.fromCharCode(65 + teamsContainer.children.length)}`;
+        const teamLetter = String.fromCharCode(65 + teamsContainer.children.length);
+        const teamName = `Equipo ${teamLetter}`;
         teamsContainer.appendChild(createTeamElement(teamName));
         addDragAndDropListeners();
     });
@@ -169,9 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('teams-container').addEventListener('click', e => {
         if (e.target.classList.contains('delete-board-btn')) {
             const teamBoard = e.target.closest('.team-board');
-            if (teamBoard.querySelector('.solicitud-card')) {
-                return alert('No se puede eliminar un equipo con tareas asignadas.');
-            }
+            if (teamBoard.querySelector('.solicitud-card')) return alert('No se puede eliminar un equipo con tareas asignadas.');
             if (confirm(`¿Seguro que quieres eliminar el ${teamBoard.dataset.teamId}?`)) {
                 teamBoard.remove();
                 updateDisabledOptions();
@@ -180,9 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('teams-container').addEventListener('change', e => {
-        if (e.target.matches('.tecnico-select')) {
-            updateDisabledOptions();
-        }
+        if (e.target.matches('.tecnico-select')) updateDisabledOptions();
     });
 });
 </script>
