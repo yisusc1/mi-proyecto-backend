@@ -18,88 +18,49 @@ let keyGenerationTime = Date.now();
 const KEY_VALIDITY_DURATION = 12 * 60 * 60 * 1000;
 function generateTemporaryKey() { return String(randomInt(1000, 9999)).padStart(4, '0'); }
 
-app.post('/api/solicitudes', async (req, res) => {
-  const solicitud = req.body;
-  solicitud.estado_solicitud = 'Pendiente';
-  const { data, error } = await supabase.from('solicitudes').insert(solicitud);
-  if (error) { console.error("Error en /api/solicitudes:", error); return res.status(400).json({ error: error.message }); }
-  res.status(201).json({ message: 'Solicitud creada con éxito', data: data });
-});
-
-app.get('/api/solicitudes/pendientes', async (req, res) => {
-    const { data, error } = await supabase.from('solicitudes').select('*').eq('estado_solicitud', 'Planificada');
-    if (error) { console.error("Error en /api/solicitudes/pendientes:", error); return res.status(500).json({ message: 'Error al obtener las solicitudes.' }); }
-    res.json(data || []);
-});
-
-app.post('/api/reportes/instalacion', async (req, res) => {
-    const reporteData = req.body;
-    const numericFields = ['velocidad_descarga_mbps', 'velocidad_subida_mbps', 'potencia_nap', 'potencia_cliente', 'metraje_utilizado_m', 'metraje_desechado_m', 'tensores_utilizados'];
-    numericFields.forEach(field => { if (reporteData[field] === '') { reporteData[field] = null; } });
-    const solicitudId = reporteData.id_solicitud;
-    if (solicitudId === 'FP-AUTO') {
-        try {
-            const { data: reportesAnteriores, error: busquedaError } = await supabase.from('reportes_instalacion').select('id_solicitud').like('id_solicitud', 'FP-%').order('created_at', { ascending: false }).limit(1);
-            if (busquedaError) throw busquedaError;
-            let nuevoNumero = 1;
-            if (reportesAnteriores && reportesAnteriores.length > 0) { nuevoNumero = parseInt(reportesAnteriores[0].id_solicitud.split('-')[1]) + 1; }
-            reporteData.id_solicitud = `FP-${nuevoNumero}`;
-            const { data, error } = await supabase.from('reportes_instalacion').insert([reporteData]).select();
-            if (error) throw error;
-            return res.status(201).json({ message: 'Reporte de instalación rápida guardado!', data });
-        } catch (error) {
-            console.error("Error en reporte FP-AUTO:", error);
-            return res.status(500).json({ message: 'Error al procesar reporte rápido.' });
-        }
-    }
-    if (solicitudId && !isNaN(parseInt(solicitudId))) {
-        const { data: reporteGuardado, error: errorReporte } = await supabase.from('reportes_instalacion').insert([reporteData]).select();
-        if (errorReporte) { console.error("Error guardando reporte:", errorReporte); return res.status(500).json({ message: errorReporte.message }); }
-        const { error: errorActualizacion } = await supabase.from('solicitudes').update({ estado_solicitud: 'Instalado' }).eq('id', solicitudId);
-        if (errorActualizacion) { console.error("Error actualizando estado de solicitud:", errorActualizacion); return res.status(201).json({ message: 'Reporte guardado, pero hubo un error al actualizar el estado.', data: reporteGuardado }); }
-        return res.status(201).json({ message: 'Reporte guardado y solicitud actualizada!', data: reporteGuardado });
-    }
-    return res.status(400).json({ message: 'ID de solicitud no válido.' });
-});
-
 app.get('/api/temporary-key', (req, res) => {
     const currentTime = Date.now();
     if (currentTime - keyGenerationTime > KEY_VALIDITY_DURATION) {
-        temporaryKey = generateTemporaryKey(); keyGenerationTime = currentTime;
+        temporaryKey = generateTemporaryKey();
+        keyGenerationTime = currentTime;
     }
     res.json({ key: temporaryKey });
 });
 
-app.get('/api/tecnicos', async (req, res) => {
-  const { data, error } = await supabase.from('tecnicos').select('nombre');
-  if (error) return res.status(400).json({ error: error.message });
-  res.json(data);
-});
-
+// ENDPOINTS PARA EL PANEL DE ADMINISTRADOR
 app.get('/api/planificacion/:date', async (req, res) => {
     const { date } = req.params;
-    const [tecnicosRes, solicitudesRes, equiposRes] = await Promise.all([
-        supabase.from('tecnicos').select('nombre'),
-        supabase.from('solicitudes').select('*').eq('fecha_disponibilidad', date),
-        supabase.from('equipos').select('*').eq('fecha', date)
-    ]);
-    if (tecnicosRes.error || solicitudesRes.error || equiposRes.error) {
-        return res.status(500).json({ message: "Error al cargar datos del panel", error: tecnicosRes.error || solicitudesRes.error || equiposRes.error });
+    try {
+        const [tecnicosRes, solicitudesRes, equiposRes] = await Promise.all([
+            supabase.from('tecnicos').select('nombre'),
+            supabase.from('solicitudes').select('*').eq('fecha_disponibilidad', date),
+            supabase.from('equipos').select('*').eq('fecha', date)
+        ]);
+
+        if (tecnicosRes.error) throw tecnicosRes.error;
+        if (solicitudesRes.error) throw solicitudesRes.error;
+        if (equiposRes.error) throw equiposRes.error;
+
+        res.json({
+            technicians: tecnicosRes.data,
+            solicitudes: solicitudesRes.data,
+            equipos: equiposRes.data
+        });
+    } catch (error) {
+        console.error("Error en /api/planificacion/:date:", error);
+        res.status(500).json({ message: "Error al cargar datos del panel" });
     }
-    res.json({
-        technicians: tecnicosRes.data,
-        solicitudes: solicitudesRes.data,
-        equipos: equiposRes.data
-    });
 });
 
 app.post('/api/planificacion/assign', async (req, res) => {
     const assignmentData = req.body;
     const originalSolicitudId = assignmentData.id;
     if (!originalSolicitudId) return res.status(400).json({ error: "Falta el ID de la solicitud en los datos enviados." });
+    
     assignmentData.solicitud_id = originalSolicitudId;
     delete assignmentData.id;
-    const { error: upsertError } = await supabase.from('planificaciones').upsert({ ...assignmentData, estado_asignacion: 'Asignada' }, { onConflict: 'solicitud_id' });
+
+    const { error: upsertError } = await supabase.from('planificaciones').upsert(assignmentData, { onConflict: 'solicitud_id' });
     if (upsertError) {
         console.error('>>> ERROR EN UPSERT DE PLANIFICACIÓN!:', upsertError);
         return res.status(400).json({ error: `Error al crear/actualizar planificación: ${upsertError.message}` });
@@ -123,6 +84,7 @@ app.post('/api/planificacion/unassign', async (req, res) => {
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
 
+// ENDPOINTS PARA GESTIONAR EQUIPOS
 app.post('/api/equipos', async (req, res) => {
     const { nombre_equipo, fecha } = req.body;
     const { data, error } = await supabase.from('equipos').insert({ nombre_equipo, fecha }).select();
@@ -140,19 +102,12 @@ app.put('/api/equipos/:id', async (req, res) => {
 
 app.delete('/api/equipos/:id', async (req, res) => {
     const { id } = req.params;
-    const { data: equipo } = await supabase.from('equipos').select('nombre_equipo').eq('id', id).single();
-    if (!equipo) return res.status(404).json({error: "Equipo no encontrado"});
-    const { data: planificaciones } = await supabase.from('planificaciones').select('solicitud_id').eq('equipo', equipo.nombre_equipo);
-    const idsToUpdate = planificaciones.map(p => p.solicitud_id);
-    if (idsToUpdate.length > 0) {
-        await supabase.from('solicitudes').update({ estado_solicitud: 'Pendiente', equipo: null, tecnico_1: null, tecnico_2: null }).in('id', idsToUpdate);
-        await supabase.from('planificaciones').delete().in('solicitud_id', idsToUpdate);
-    }
-    const { error: deleteError } = await supabase.from('equipos').delete().eq('id', id);
-    if (deleteError) { console.error('>>> ERROR AL ELIMINAR EQUIPO:', deleteError); return res.status(400).json({ error: deleteError.message }); }
-    res.json({ message: 'Equipo eliminado y tareas devueltas a pendientes.' });
+    const { error } = await supabase.from('equipos').delete().eq('id', id);
+    if (error) { console.error('>>> ERROR AL ELIMINAR EQUIPO:', error); return res.status(400).json({ error: error.message }); }
+    res.json({ message: 'Equipo eliminado con éxito.' });
 });
 
+// --- INICIAR EL SERVIDOR ---
 app.listen(port, '0.0.0.0', () => {
   console.log(`Servidor corriendo en el puerto ${port}`);
 });
