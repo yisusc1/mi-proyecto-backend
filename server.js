@@ -93,7 +93,7 @@ app.get('/api/tecnicos', async (req, res) => {
 });
 
 // --- ENDPOINTS PARA EL PANEL DE ADMINISTRADOR ---
-app.get('/api/planificacion/:date', async (req, res) => {
+app.get('/api/planificacion/:date(\\d{4}-\\d{2}-\\d{2})', async (req, res) => {
     const { date } = req.params;
     const [tecnicosRes, solicitudesRes] = await Promise.all([
         supabase.from('tecnicos').select('nombre'),
@@ -139,7 +139,7 @@ app.post('/api/planificacion/unassign', async (req, res) => {
     res.json({ result: 'success', message: 'Tarea devuelta a pendientes.' });
 });
 
-// --- ENDPOINT PARA FACTIBILIDAD (Asegúrate de que esta sección esté) ---
+// --- ENDPOINT PARA FACTIBILIDAD ---
 function getDistanceInMeters(lat1, lon1, lat2, lon2) {
   const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180; const φ2 = lat2 * Math.PI / 180;
