@@ -185,20 +185,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dateSelector.addEventListener('change', () => loadBoardForDate(dateSelector.value));
     
     document.getElementById('add-equipo-btn').addEventListener('click', () => {
-    if(kanban) {
-        const nextLetter = getNextTeamLetter();
-        if(!nextLetter) return alert('No hay más letras de equipo disponibles.');
-        const teamName = `Equipo ${nextLetter}`;
-        kanban.addBoards([{ id: teamName, title: createTeamControls(teamName), item: [] }]);
-        
-        // Se añade el listener para el botón de borrar del nuevo equipo
-        addDeleteListener(teamName);
-        
-        // <<< LÍNEA AÑADIDA PARA LA CORRECCIÓN >>>
-        // Actualiza inmediatamente las opciones de los técnicos
-        updateDisabledOptions();
-    }
-});
+        if(kanban) {
+            const nextLetter = getNextTeamLetter();
+            if(!nextLetter) return alert('No hay más letras de equipo disponibles.');
+            const teamName = `Equipo ${nextLetter}`;
+            kanban.addBoards([{ id: teamName, title: createTeamControls(teamName), item: [] }]);
+            addDeleteListener(teamName);
+        }
+    });
 
     document.getElementById('refresh-key-btn').addEventListener('click', fetchAndDisplayTempKey);
     
